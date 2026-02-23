@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <title>eBay Kleingewerbe – Tabelle</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <header class="sticky top-0 z-10 bg-gray-900 text-white">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div>
+        <div class="text-lg font-semibold">eBay Kleingewerbe – Tabelle</div>
+        <div class="text-xs text-gray-300">Mehrere Artikel • Auto-Speichern • Monatsfilter • Export</div>
+      </div>
+      <button id="installBtn" class="hidden text-sm bg-white/10 hover:bg-white/20 px-3 py-2 rounded-xl">Installieren</button>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto p-4 space-y-4">
+    <!-- Controls -->
+    <section class="bg-white rounded-2xl shadow p-4 space-y-3">
+      <div class="flex flex-col lg:flex-row gap-2 lg:items-center lg:justify-between">
+        <div class="flex flex-wrap gap-2 items-center">
+          <label class="text-sm text-gray-600">Monat</label>
+          <input id="monthFilter" type="month" class="border rounded-xl px-3 py-2" />
+          <input id="search" placeholder="Suchen (Artikel, Bestellnr., Status, Notiz)…" class="border rounded-xl px-3 py-2 w-full sm:w-80" />
+          <select id="statusFilter" class="border rounded-xl px-3 py-2">
+            <option value="">Alle Status</option>
+            <option>Offen</option>
+            <option>Bezahlt</option>
+            <option>Ausgezahlt</option>
+            <option>Retour</option>
+          </select>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <button id="addBtn" class="bg-gray-900 text-white px-4 py-2 rounded-xl">+ Artikel hinzufügen</button>
+          <button id="exportBtn" class="bg-green-600 text-white px-4 py-2 rounded-xl">Export CSV</button>
+          <button id="backupBtn" class="bg-gray-200 px-4 py-2 rounded-xl">Backup JSON</button>
+          <label class="bg-gray-200 px-4 py-2 rounded-xl cursor-pointer text-sm">
+            Import JSON
+            <input id="importInput" type="file" accept="application/json" class="hidden" />
+          </label>
+          <button id="clearBtn" class="bg-red-600 text-white px-4 py-2 rounded-xl">Alle löschen</button>
+        </div>
+      </div>
+      <div class="text-xs text-gray-500">
+        Tipp: Du kannst mehrere Artikel mit derselben <b>Bestellnr.</b> eintragen (z.B. wenn ein Käufer mehrere Positionen gekauft hat).
+      </div>
+    </section>
+
+    <!-- KPIs -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div class="bg-white rounded-2xl shadow p-4">
+        <div class="text-xs text-gray-500">Monat Umsatz</div>
+        <div id="kpiUmsatz" class="text-2xl font-semibold">0,00 €</div>
+      </div>
+      <div class="bg-white rounded-2xl shadow p-4">
+        <div class="text-xs text-gray-500">Monat Gewinn</div>
+        <div id="kpiGewinn" class="text-2xl font-semibold">0,00 €</div>
+      </div>
+      <div class="bg-white rounded-2xl shadow p-4">
+        <div class="text-xs text-gray-500">40% Steuer-Rücklage</div>
+        <div id="kpiSteuer" class="text-2xl font-semibold">0,00 €</div>
+      </div>
+    </section>
+
+    <!-- Table -->
+    <section class="bg-white rounded-2xl shadow p-4">
+      <div class="flex items-center justify-between mb-3">
+        <div class="font-semibold">Tabelle</div>
+        <div class="text-xs text-gray-500"><span id="rowCount">0</span> Zeilen</div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-[1100px] w-full text-sm border rounded-xl overflow-hidden" id="salesTable">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="p-2 border-b">Bestellnr.</th>
+              <th class="p-2 border-b">Datum</th>
+              <th class="p-2 border-b">Status</th>
+              <th class="p-2 border-b">Artikel</th>
+              <th class="p-2 border-b text-right">Einkauf</th>
+              <th class="p-2 border-b text-right">Verkauf</th>
+              <th class="p-2 border-b text-right">Gebühren</th>
+              <th class="p-2 border-b text-right">Versand</th>
+              <th class="p-2 border-b text-right">Gewinn</th>
+              <th class="p-2 border-b text-right">40% Steuer</th>
+              <th class="p-2 border-b">Notiz</th>
+              <th class="p-2 border-b">Aktion</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="mt-4 text-xs text-gray-500">
+        Speichert automatisch auf deinem Gerät. Für Sicherheit regelmäßig <b>Backup JSON</b> nutzen.
+      </div>
+    </section>
+  </main>
+
+<script>
+/** ---------- Storage ---------- **/
+const STORAGE_KEY = "ebay_kleingewerbe_table_v2";
+
+/** ---------- Helpers ---------- **/
+function euro(n) {
+  const v = Number(n || 0);
+  return v.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
+}
+function monthISO(d = new Date()) {
+  const pad = (x) => String(x).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}`;
+}
+function todayISO(d = new Date()) {
+  const pad = (x) => String(x).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function safeNum(x) { return Number(String(x || "0").replace(",", ".")) || 0; }
+function calcProfit(row) {
+  const profit = safeNum(row.sell) - safeNum(row.buy) - safeNum(row.fees) - safeNum(row.ship);
+  const tax40 = profit > 0 ? profit * 0.4 : 0;
+  return { profit, tax40 };
+}
+function uid() {
+  return (crypto?.randomUUID?.() || (Date.now().toString(36) + Math.random().toString(36).slice(2)));
+}
+
+/** ---------- State ---------- **/
+let rows = [];
+const el = (id) => document.getElementById(id);
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    rows = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(rows)) rows = [];
+  } catch {
+    rows = [];
+  }
+}
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+}
+
+/** ---------- Render ---------- **/
+function currentFilter() {
+  return {
+    month: el("monthFilter").value || monthISO(),
+    q: (el("search").value || "").trim().toLowerCase(),
+    status: el("statusFilter").value || ""
+  };
+}
+
+function visibleRows() {
+  const { month, q, status } = currentFilter();
+  return rows
+    .filter(r => (r.date || "").slice(0,7) === month)
+    .filter(r => !status || (r.status || "") === status)
+    .filter(r => {
+      if (!q) return true;
+      const hay = `${r.order||""} ${r.status||""} ${r.item||""} ${r.note||""}`.toLowerCase();
+      return hay.includes(q);
+    })
+    .sort((a,b) => (b.date||"").localeCompare(a.date||""));
+}
+
+function render() {
+  const view = visibleRows();
+  const tbody = el("tbody");
+  tbody.innerHTML = "";
+  el("rowCount").textContent = String(view.length);
+
+  let umsatz = 0, gewinn = 0, steuer = 0;
+
+  for (const r of view) {
+    const { profit, tax40 } = calcProfit(r);
+    umsatz += safeNum(r.sell);
+    gewinn += profit;
+    steuer += tax40;
+
+    const tr = document.createElement("tr");
+    tr.className = "hover:bg-gray-50";
+
+    tr.innerHTML = `
+      <td class="p-2 border-b">
+        <input class="w-36 border rounded-lg px-2 py-1" value="${escapeAttr(r.order||"")}" data-field="order" data-id="${r.id}">
+      </td>
+      <td class="p-2 border-b">
+        <input type="date" class="w-36 border rounded-lg px-2 py-1" value="${escapeAttr(r.date||todayISO())}" data-field="date" data-id="${r.id}">
+      </td>
+      <td class="p-2 border-b">
+        <select class="w-36 border rounded-lg px-2 py-1" data-field="status" data-id="${r.id}">
+          ${["Offen","Bezahlt","Ausgezahlt","Retour"].map(s => `<option ${s===r.status ? "selected":""}>${s}</option>`).join("")}
+        </select>
+      </td>
+      <td class="p-2 border-b">
+        <input class="w-64 border rounded-lg px-2 py-1" value="${escapeAttr(r.item||"")}" data-field="item" data-id="${r.id}" placeholder="Artikel">
+      </td>
+      <td class="p-2 border-b text-right">
+        <input inputmode="decimal" class="w-28 border rounded-lg px-2 py-1 text-right" value="${escapeAttr(r.buy ?? 0)}" data-field="buy" data-id="${r.id}">
+      </td>
+      <td class="p-2 border-b text-right">
+        <input inputmode="decimal" class="w-28 border rounded-lg px-2 py-1 text-right" value="${escapeAttr(r.sell ?? 0)}" data-field="sell" data-id="${r.id}">
+      </td>
+      <td class="p-2 border-b text-right">
+        <input inputmode="decimal" class="w-28 border rounded-lg px-2 py-1 text-right" value="${escapeAttr(r.fees ?? 0)}" data-field="fees" data-id="${r.id}">
+      </td>
+      <td class="p-2 border-b text-right">
+        <input inputmode="decimal" class="w-28 border rounded-lg px-2 py-1 text-right" value="${escapeAttr(r.ship ?? 0)}" data-field="ship" data-id="${r.id}">
+      </td>
+      <td class="p-2 border-b text-right font-semibold">${euro(profit)}</td>
+      <td class="p-2 border-b text-right text-gray-600">${euro(tax40)}</td>
+      <td class="p-2 border-b">
+        <input class="w-64 border rounded-lg px-2 py-1" value="${escapeAttr(r.note||"")}" data-field="note" data-id="${r.id}" placeholder="Notiz">
+      </td>
+      <td class="p-2 border-b">
+        <button class="delBtn bg-red-600 text-white px-3 py-2 rounded-xl text-xs" data-id="${r.id}">Löschen</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  el("kpiUmsatz").textContent = euro(umsatz);
+  el("kpiGewinn").textContent = euro(gewinn);
+  el("kpiSteuer").textContent = euro(steuer);
+}
+
+function escapeAttr(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+/** ---------- Events ---------- **/
+function addRow() {
+  rows.push({
+    id: uid(),
+    order: "",
+    date: todayISO(),
+    status: "Bezahlt",
+    item: "",
+    buy: 0,
+    sell: 0,
+    fees: 0,
+    ship: 0,
+    note: ""
+  });
+  save();
+  render();
+  // focus last row item input
+  setTimeout(() => {
+    const inputs = el("tbody").querySelectorAll('input[data-field="item"]');
+    inputs[0]?.focus?.();
+  }, 0);
+}
+
+function deleteRow(id) {
+  rows = rows.filter(r => r.id !== id);
+  save();
+  render();
+}
+
+function updateField(id, field, value) {
+  const r = rows.find(x => x.id === id);
+  if (!r) return;
+  if (["buy","sell","fees","ship"].includes(field)) {
+    r[field] = safeNum(value);
+  } else {
+    r[field] = value;
+  }
+  save();
+  render();
+}
+
+function exportCSV() {
+  const view = visibleRows();
+  const header = ["Bestellnr","Datum","Status","Artikel","Einkauf","Verkauf","Gebühren","Versand","Gewinn","Steuer40","Notiz"];
+  const lines = [header.join(";")];
+
+  for (const r of view) {
+    const { profit, tax40 } = calcProfit(r);
+    const row = [
+      r.order || "",
+      r.date || "",
+      r.status || "",
+      r.item || "",
+      safeNum(r.buy),
+      safeNum(r.sell),
+      safeNum(r.fees),
+      safeNum(r.ship),
+      profit,
+      tax40,
+      (r.note || "").replaceAll(";", ",")
+    ];
+    lines.push(row.map(v => String(v)).join(";"));
+  }
+
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `ebay-kleingewerbe-${currentFilter().month}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function backupJSON() {
+  const blob = new Blob([JSON.stringify(rows, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "ebay-kleingewerbe-backup.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+async function importJSON(file) {
+  const txt = await file.text();
+  const data = JSON.parse(txt);
+  if (!Array.isArray(data)) throw new Error("Ungültiges Format");
+  rows = data.map(r => ({
+    id: r.id || uid(),
+    order: r.order || "",
+    date: r.date || todayISO(),
+    status: r.status || "Bezahlt",
+    item: r.item || "",
+    buy: safeNum(r.buy),
+    sell: safeNum(r.sell),
+    fees: safeNum(r.fees),
+    ship: safeNum(r.ship),
+    note: r.note || ""
+  }));
+  save();
+  render();
+}
+
+function clearAll() {
+  if (!confirm("Wirklich ALLE Einträge löschen?")) return;
+  rows = [];
+  localStorage.removeItem(STORAGE_KEY);
+  render();
+}
+
+/** ---------- Boot ---------- **/
+(function init() {
+  // Defaults
+  el("monthFilter").value = monthISO();
+
+  load();
+  // If empty, start with one row
+  if (!rows.length) rows = [{
+    id: uid(), order:"", date: todayISO(), status:"Bezahlt", item:"", buy:0, sell:0, fees:0, ship:0, note:""
+  }];
+  save();
+  render();
+
+  // Control listeners
+  el("addBtn").addEventListener("click", addRow);
+  el("exportBtn").addEventListener("click", exportCSV);
+  el("backupBtn").addEventListener("click", backupJSON);
+  el("clearBtn").addEventListener("click", clearAll);
+  el("monthFilter").addEventListener("change", render);
+  el("search").addEventListener("input", render);
+  el("statusFilter").addEventListener("change", render);
+
+  // Delegated table events
+  el("tbody").addEventListener("input", (e) => {
+    const t = e.target;
+    if (!(t instanceof HTMLElement)) return;
+    const id = t.getAttribute("data-id");
+    const field = t.getAttribute("data-field");
+    if (!id || !field) return;
+    updateField(id, field, t.value);
+  });
+  el("tbody").addEventListener("change", (e) => {
+    const t = e.target;
+    if (!(t instanceof HTMLElement)) return;
+    const id = t.getAttribute("data-id");
+    const field = t.getAttribute("data-field");
+    if (!id || !field) return;
+    updateField(id, field, t.value);
+  });
+  el("tbody").addEventListener("click", (e) => {
+    const t = e.target;
+    if (!(t instanceof HTMLElement)) return;
+    if (t.classList.contains("delBtn")) {
+      const id = t.getAttribute("data-id");
+      if (id) deleteRow(id);
+    }
+  });
+
+  // Import
+  el("importInput").addEventListener("change", async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    try {
+      await importJSON(f);
+      alert("Import erfolgreich ✅");
+    } catch (err) {
+      alert("Import fehlgeschlagen: " + err.message);
+    } finally {
+      e.target.value = "";
+    }
+  });
+
+  // Service Worker
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./sw.js").catch(() => {});
+    });
+  }
+
+  // Install prompt
+  let deferredPrompt = null;
+  const installBtn = el("installBtn");
+  window.addEventListener("beforeinstallprompt", (ev) => {
+    ev.preventDefault();
+    deferredPrompt = ev;
+    installBtn.classList.remove("hidden");
+  });
+  installBtn.addEventListener("click", async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    try { await deferredPrompt.userChoice; } catch {}
+    deferredPrompt = null;
+    installBtn.classList.add("hidden");
+  });
+})();
+</script>
+</body>
+</html>
