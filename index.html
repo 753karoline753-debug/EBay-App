@@ -1,154 +1,864 @@
 <!doctype html>
 <html lang="de">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>eBay Kleingewerbe – Ultimate Business App</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <title>eBay Kleingewerbe – Ultimate App (§19)</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="bg-gray-100 min-h-screen p-4">
 
-<div class="max-w-7xl mx-auto bg-white rounded-2xl shadow-xl p-6">
-<h1 class="text-2xl font-bold mb-4">eBay Kleingewerbe – Ultimate Business App (§19)</h1>
+<body class="bg-gray-100 min-h-screen">
+<header class="sticky top-0 z-10 bg-gray-900 text-white">
+  <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div>
+      <div class="text-lg font-semibold">eBay Kleingewerbe – Ultimate App</div>
+      <div class="text-xs text-gray-300">Kleinunternehmer (§19) • Einnahmen • Ausgaben • EÜR • Prognose</div>
+    </div>
 
-<div class="flex flex-wrap gap-3 mb-6">
-<select id="yearSelect" class="border px-3 py-2 rounded-xl" onchange="renderAll()"></select>
-<button onclick="showTab('dashboard')" class="px-4 py-2 rounded-xl bg-black text-white">Dashboard</button>
-<button onclick="showTab('euer')" class="px-4 py-2 rounded-xl bg-gray-200">EÜR</button>
-</div>
+    <div class="flex flex-wrap gap-2 items-center">
+      <label class="text-xs text-gray-300">Jahr</label>
+      <select id="yearSelect" class="text-sm bg-white/10 border border-white/10 rounded-xl px-3 py-2"></select>
 
-<div id="dashboardSection">
-<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-<div class="bg-gray-100 p-4 rounded-xl">
-<div>Jahresumsatz</div>
-<div id="yearRevenue" class="font-bold">0 €</div>
-</div>
-<div class="bg-gray-100 p-4 rounded-xl">
-<div>Jahresgewinn</div>
-<div id="yearProfit" class="font-bold">0 €</div>
-</div>
-<div class="bg-yellow-100 p-4 rounded-xl">
-<div>Steuer Rücklage (40%)</div>
-<div id="yearTax" class="font-bold">0 €</div>
-</div>
-<div class="bg-blue-100 p-4 rounded-xl">
-<div>Einkommensteuer Prognose*</div>
-<div id="incomeTaxEstimate" class="font-bold">0 €</div>
-</div>
-</div>
+      <button data-tab="dashboard" class="tabBtn text-sm bg-white/10 hover:bg-white/20 px-3 py-2 rounded-xl">Dashboard</button>
+      <button data-tab="income" class="tabBtn text-sm bg-white/10 hover:bg-white/20 px-3 py-2 rounded-xl">Einnahmen</button>
+      <button data-tab="expense" class="tabBtn text-sm bg-white/10 hover:bg-white/20 px-3 py-2 rounded-xl">Ausgaben</button>
+      <button data-tab="euer" class="tabBtn text-sm bg-white/10 hover:bg-white/20 px-3 py-2 rounded-xl">EÜR</button>
+    </div>
+  </div>
+</header>
 
-<div class="mb-6">
-<div id="kuWarning" class="p-4 rounded-xl hidden"></div>
-</div>
+<main class="max-w-7xl mx-auto p-4 space-y-4">
 
-<canvas id="profitChart" height="100"></canvas>
-</div>
+  <!-- DASHBOARD -->
+  <section id="tab-dashboard" class="bg-white rounded-2xl shadow p-4 space-y-4">
+    <div id="kuWarning" class="hidden p-4 rounded-2xl"></div>
 
-<div id="euerSection" class="hidden">
-<h2 class="text-xl font-semibold mb-4">EÜR Übersicht</h2>
-<div id="euerSummary" class="text-lg"></div>
-</div>
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="text-xs text-gray-500">Jahresumsatz</div>
+        <div id="kpiRevenue" class="text-2xl font-semibold">0,00 €</div>
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="text-xs text-gray-500">Jahresausgaben</div>
+        <div id="kpiExpense" class="text-2xl font-semibold">0,00 €</div>
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="text-xs text-gray-500">Jahresgewinn</div>
+        <div id="kpiProfit" class="text-2xl font-semibold">0,00 €</div>
+      </div>
+      <div class="bg-yellow-50 rounded-2xl p-4">
+        <div class="text-xs text-gray-500">40% Rücklage (Gewinn)</div>
+        <div id="kpiTax40" class="text-2xl font-semibold">0,00 €</div>
+      </div>
+      <div class="bg-blue-50 rounded-2xl p-4">
+        <div class="text-xs text-gray-500">Jahres-Gewinn-Prognose</div>
+        <div id="kpiForecast" class="text-2xl font-semibold">0,00 €</div>
+      </div>
+    </div>
 
-</div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="text-sm font-semibold mb-2">Monatsverlauf (Gewinn)</div>
+        <canvas id="profitChart" height="120"></canvas>
+        <div class="text-xs text-gray-500 mt-2">
+          Prognose = (Gewinn bis jetzt ÷ Monate mit Daten) × 12
+        </div>
+      </div>
+
+      <div class="bg-gray-50 rounded-2xl p-4 space-y-3">
+        <div class="text-sm font-semibold">Schnellaktionen</div>
+        <div class="flex flex-wrap gap-2">
+          <button id="backupBtn" class="text-sm bg-gray-900 text-white px-3 py-2 rounded-xl">Backup JSON</button>
+          <label class="text-sm bg-gray-200 px-3 py-2 rounded-xl cursor-pointer">
+            Import JSON
+            <input id="importInput" type="file" accept="application/json" class="hidden">
+          </label>
+          <button id="clearBtn" class="text-sm bg-red-600 text-white px-3 py-2 rounded-xl">Alles löschen</button>
+        </div>
+
+        <div class="text-xs text-gray-600">
+          Daten bleiben auf deinem Gerät (LocalStorage). Für Sicherheit regelmäßig Backup nutzen.
+        </div>
+
+        <div class="border rounded-2xl p-3 bg-white">
+          <div class="text-sm font-semibold mb-1">Hinweis Kleinunternehmer (§19)</div>
+          <div class="text-xs text-gray-600">
+            Umsatzgrenze (typisch): 22.000 € (Vorjahr). Diese App warnt, wenn du dich näherst.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EINNAHMEN -->
+  <section id="tab-income" class="hidden bg-white rounded-2xl shadow p-4 space-y-3">
+    <div class="flex flex-wrap gap-2 items-center justify-between">
+      <div class="font-semibold">Einnahmen (verkaufte Artikel)</div>
+      <div class="flex flex-wrap gap-2">
+        <button id="addIncomeBtn" class="text-sm bg-gray-900 text-white px-3 py-2 rounded-xl">+ Verkauf</button>
+        <button id="exportIncomeBtn" class="text-sm bg-green-600 text-white px-3 py-2 rounded-xl">Export CSV</button>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-[1200px] w-full text-sm border rounded-xl overflow-hidden">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="p-2 border-b">Bestellnr.</th>
+            <th class="p-2 border-b">Datum</th>
+            <th class="p-2 border-b">Artikel</th>
+            <th class="p-2 border-b text-right">Verkauf (€)</th>
+            <th class="p-2 border-b text-right">Einkauf (€)</th>
+            <th class="p-2 border-b text-right">Gebühren (€)</th>
+            <th class="p-2 border-b text-right">Versand (€)</th>
+            <th class="p-2 border-b text-right">Gewinn</th>
+            <th class="p-2 border-b text-right">40% Steuer</th>
+            <th class="p-2 border-b">Notiz</th>
+            <th class="p-2 border-b">Aktion</th>
+          </tr>
+        </thead>
+        <tbody id="incomeBody"></tbody>
+      </table>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="text-xs text-gray-500">Summe Verkauf</div>
+        <div id="incomeSumSell" class="text-xl font-semibold">0,00 €</div>
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="text-xs text-gray-500">Summe Gewinn</div>
+        <div id="incomeSumProfit" class="text-xl font-semibold">0,00 €</div>
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="text-xs text-gray-500">Summe 40% Rücklage</div>
+        <div id="incomeSumTax" class="text-xl font-semibold">0,00 €</div>
+      </div>
+    </div>
+
+    <div class="mt-2">
+      <div class="text-sm font-semibold mb-1">Summen pro Bestellnr.</div>
+      <div id="orderSummary" class="text-xs text-gray-700"></div>
+    </div>
+  </section>
+
+  <!-- AUSGABEN -->
+  <section id="tab-expense" class="hidden bg-white rounded-2xl shadow p-4 space-y-3">
+    <div class="flex flex-wrap gap-2 items-center justify-between">
+      <div class="font-semibold">Ausgaben</div>
+      <div class="flex flex-wrap gap-2">
+        <button id="addExpenseBtn" class="text-sm bg-gray-900 text-white px-3 py-2 rounded-xl">+ Ausgabe</button>
+        <button id="exportExpenseBtn" class="text-sm bg-green-600 text-white px-3 py-2 rounded-xl">Export CSV</button>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-[1000px] w-full text-sm border rounded-xl overflow-hidden">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="p-2 border-b">Datum</th>
+            <th class="p-2 border-b">Kategorie</th>
+            <th class="p-2 border-b">Beschreibung</th>
+            <th class="p-2 border-b text-right">Betrag (€)</th>
+            <th class="p-2 border-b">Aktion</th>
+          </tr>
+        </thead>
+        <tbody id="expenseBody"></tbody>
+      </table>
+    </div>
+
+    <div class="bg-gray-50 rounded-2xl p-4">
+      <div class="text-xs text-gray-500">Summe Ausgaben</div>
+      <div id="expenseSum" class="text-xl font-semibold">0,00 €</div>
+    </div>
+  </section>
+
+  <!-- EÜR -->
+  <section id="tab-euer" class="hidden bg-white rounded-2xl shadow p-4 space-y-4">
+    <div class="flex flex-wrap gap-2 items-center justify-between">
+      <div class="font-semibold">EÜR (Kleinunternehmer §19)</div>
+      <div class="flex flex-wrap gap-2">
+        <button id="exportEuerBtn" class="text-sm bg-green-600 text-white px-3 py-2 rounded-xl">EÜR Export CSV</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="text-xs text-gray-500">Betriebseinnahmen</div>
+        <div id="euerIncome" class="text-2xl font-semibold">0,00 €</div>
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="text-xs text-gray-500">Betriebsausgaben</div>
+        <div id="euerExpense" class="text-2xl font-semibold">0,00 €</div>
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="text-xs text-gray-500">Gewinn</div>
+        <div id="euerProfit" class="text-2xl font-semibold">0,00 €</div>
+      </div>
+      <div class="bg-yellow-50 rounded-2xl p-4">
+        <div class="text-xs text-gray-500">Steuer-Rücklage (40%)</div>
+        <div id="euerTax40" class="text-2xl font-semibold">0,00 €</div>
+      </div>
+    </div>
+
+    <div class="border rounded-2xl p-4 bg-gray-50">
+      <div class="text-sm font-semibold mb-2">EÜR Hinweise</div>
+      <ul class="text-xs text-gray-700 list-disc pl-4 space-y-1">
+        <li>Als Kleinunternehmer (§19) werden keine USt-Beträge gerechnet (Brutto = Netto).</li>
+        <li>Gewinn = Summe Einnahmen − Summe Ausgaben.</li>
+        <li>40% Rücklage ist nur eine Spar-Logik (keine echte Steuerberechnung).</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer class="text-center text-xs text-gray-500 pb-8">
+    Tipp: Wenn du Updates nicht siehst, iPhone Cache löschen oder die App neu zum Home-Bildschirm hinzufügen.
+  </footer>
+</main>
 
 <script>
-const STORAGE_KEY="ebay_ultimate_app";
-let data=JSON.parse(localStorage.getItem(STORAGE_KEY)||"{\"income\":[],\"expense\":[]}");
+(() => {
+  const STORAGE_KEY = "ebay_ultimate_v1";
 
-function euro(n){return n.toLocaleString('de-DE',{style:'currency',currency:'EUR'});} 
-function parseGerman(v){if(!v)return 0;return parseFloat(v.toString().replace(/\./g,'').replace(',','.'))||0;}
-function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}
+  // ----- helpers
+  const el = (id) => document.getElementById(id);
 
-function showTab(tab){
- document.getElementById('dashboardSection').classList.toggle('hidden',tab!=='dashboard');
- document.getElementById('euerSection').classList.toggle('hidden',tab!=='euer');
-}
+  function euro(n) {
+    const v = Number(n || 0);
+    return v.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
+  }
 
-function initYears(){
- const select=document.getElementById('yearSelect');
- const currentYear=new Date().getFullYear();
- for(let y=currentYear-2;y<=currentYear+1;y++){
- const opt=document.createElement('option');
- opt.value=y; opt.textContent=y;
- if(y===currentYear) opt.selected=true;
- select.appendChild(opt);
- }
-}
+  // akzeptiert: 12,5 | 12.50 | 1.234,56 | 1,234.56 (best effort)
+  function parseGermanNumber(value) {
+    if (value === null || value === undefined) return 0;
+    let s = String(value).trim();
+    if (!s) return 0;
 
-function calculate(){
- const year=parseInt(document.getElementById('yearSelect').value);
- let revenue=0,expense=0;
- let monthlyProfit=Array(12).fill(0);
+    // remove spaces
+    s = s.replace(/\s+/g, "");
 
- data.income.forEach(r=>{
- if(!r.date) return;
- const d=new Date(r.date);
- if(d.getFullYear()===year){
- const amount=parseGerman(r.amount);
- revenue+=amount;
- monthlyProfit[d.getMonth()]+=amount;
- }
- });
+    // If has both comma and dot: assume the last separator is decimal, remove the other as thousands.
+    const lastComma = s.lastIndexOf(",");
+    const lastDot = s.lastIndexOf(".");
+    if (lastComma !== -1 && lastDot !== -1) {
+      if (lastComma > lastDot) {
+        // comma is decimal
+        s = s.replace(/\./g, "").replace(",", ".");
+      } else {
+        // dot is decimal
+        s = s.replace(/,/g, "");
+      }
+    } else {
+      // only one of them
+      s = s.replace(/\./g, "").replace(",", ".");
+    }
+    const n = Number.parseFloat(s);
+    return Number.isFinite(n) ? n : 0;
+  }
 
- data.expense.forEach(r=>{
- if(!r.date) return;
- const d=new Date(r.date);
- if(d.getFullYear()===year){
- const amount=parseGerman(r.amount);
- expense+=amount;
- monthlyProfit[d.getMonth()]-=amount;
- }
- });
+  function formatDe(n) {
+    return Number(n || 0).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
 
- const profit=revenue-expense;
- const taxReserve=profit>0?profit*0.4:0;
+  function todayISO() {
+    const d = new Date();
+    const pad = (x) => String(x).padStart(2,"0");
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  }
 
- // Kleinunternehmer Warnung 22.000 € Grenze
- const warning=document.getElementById('kuWarning');
- if(revenue>20000){
- warning.className='p-4 rounded-xl bg-red-200';
- warning.innerText='⚠ Achtung: Du näherst dich der 22.000 € Kleinunternehmer-Grenze!';
- } else if(revenue>17000){
- warning.className='p-4 rounded-xl bg-yellow-200';
- warning.innerText='Hinweis: Umsatz steigt Richtung Kleinunternehmer-Grenze.';
- } else {
- warning.className='hidden';
- }
+  function uid() {
+    return (crypto?.randomUUID?.() || (Date.now().toString(36) + Math.random().toString(36).slice(2)));
+  }
 
- // Einkommensteuer grobe Schätzung (vereinfacht)
- let incomeTax=0;
- if(profit>10908) incomeTax=(profit-10908)*0.2;
+  // ----- state
+  let state = loadState();
 
- return {revenue,expense,profit,taxReserve,incomeTax,monthlyProfit};
-}
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (parsed && typeof parsed === "object") {
+        if (!Array.isArray(parsed.income)) parsed.income = [];
+        if (!Array.isArray(parsed.expense)) parsed.expense = [];
+        return parsed;
+      }
+    } catch {}
+    return { income: [], expense: [] };
+  }
 
-let chart;
-function renderAll(){
- const {revenue,expense,profit,taxReserve,incomeTax,monthlyProfit}=calculate();
+  function saveState() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
 
- document.getElementById('yearRevenue').innerText=euro(revenue);
- document.getElementById('yearProfit').innerText=euro(profit);
- document.getElementById('yearTax').innerText=euro(taxReserve);
- document.getElementById('incomeTaxEstimate').innerText=euro(incomeTax);
+  function getYear() {
+    return Number(el("yearSelect").value);
+  }
 
- document.getElementById('euerSummary').innerHTML=
- `Einnahmen: ${euro(revenue)}<br>Ausgaben: ${euro(expense)}<br>Gewinn: ${euro(profit)}`;
+  function inYear(dateStr, year) {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    return d.getFullYear() === year;
+  }
 
- const ctx=document.getElementById('profitChart');
- if(chart) chart.destroy();
- chart=new Chart(ctx,{
- type:'line',
- data:{
- labels:['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'],
- datasets:[{label:'Monatsgewinn',data:monthlyProfit,borderWidth:2,fill:false}]
- }
- });
-}
+  function calcIncomeRow(r) {
+    const sell = parseGermanNumber(r.sell);
+    const buy = parseGermanNumber(r.buy);
+    const fees = parseGermanNumber(r.fees);
+    const ship = parseGermanNumber(r.ship);
+    const profit = sell - buy - fees - ship;
+    const tax40 = profit > 0 ? profit * 0.4 : 0;
+    return { sell, buy, fees, ship, profit, tax40 };
+  }
 
-initYears();
-renderAll();
+  // ----- tabs
+  function showTab(name) {
+    ["dashboard","income","expense","euer"].forEach(t => {
+      el(`tab-${t}`).classList.toggle("hidden", t !== name);
+    });
+
+    // highlight active (simple)
+    document.querySelectorAll(".tabBtn").forEach(btn => {
+      const active = btn.getAttribute("data-tab") === name;
+      btn.classList.toggle("bg-white/30", active);
+    });
+
+    renderAll();
+  }
+
+  document.querySelectorAll(".tabBtn").forEach(btn => {
+    btn.addEventListener("click", () => showTab(btn.getAttribute("data-tab")));
+  });
+
+  // ----- year select
+  function initYears() {
+    const select = el("yearSelect");
+    select.innerHTML = "";
+    const now = new Date().getFullYear();
+    for (let y = now - 2; y <= now + 1; y++) {
+      const opt = document.createElement("option");
+      opt.value = String(y);
+      opt.textContent = String(y);
+      if (y === now) opt.selected = true;
+      select.appendChild(opt);
+    }
+    select.addEventListener("change", renderAll);
+  }
+
+  // ----- CRUD income
+  function addIncome() {
+    state.income.push({
+      id: uid(),
+      order: "",
+      date: todayISO(),
+      item: "",
+      sell: "",
+      buy: "",
+      fees: "",
+      ship: "",
+      note: ""
+    });
+    saveState();
+    renderIncome();
+    renderAll();
+  }
+
+  function delIncome(id) {
+    state.income = state.income.filter(r => r.id !== id);
+    saveState();
+    renderIncome();
+    renderAll();
+  }
+
+  function updateIncome(id, field, value) {
+    const r = state.income.find(x => x.id === id);
+    if (!r) return;
+    r[field] = value;
+    saveState();
+    // re-render for live totals / calculations
+    renderIncome();
+    renderAll();
+  }
+
+  // ----- CRUD expense
+  function addExpense() {
+    state.expense.push({
+      id: uid(),
+      date: todayISO(),
+      cat: "Sonstiges",
+      desc: "",
+      amount: ""
+    });
+    saveState();
+    renderExpense();
+    renderAll();
+  }
+
+  function delExpense(id) {
+    state.expense = state.expense.filter(r => r.id !== id);
+    saveState();
+    renderExpense();
+    renderAll();
+  }
+
+  function updateExpense(id, field, value) {
+    const r = state.expense.find(x => x.id === id);
+    if (!r) return;
+    r[field] = value;
+    saveState();
+    renderExpense();
+    renderAll();
+  }
+
+  // ----- render income
+  function renderIncome() {
+    const year = getYear();
+    const body = el("incomeBody");
+    body.innerHTML = "";
+
+    const yearRows = state.income.filter(r => inYear(r.date, year)).sort((a,b) => (b.date||"").localeCompare(a.date||""));
+
+    let sumSell = 0, sumProfit = 0, sumTax = 0;
+    const orderProfits = new Map();
+
+    for (const r of yearRows) {
+      const c = calcIncomeRow(r);
+      sumSell += c.sell;
+      sumProfit += c.profit;
+      sumTax += c.tax40;
+
+      if (r.order) orderProfits.set(r.order, (orderProfits.get(r.order) || 0) + c.profit);
+
+      const tr = document.createElement("tr");
+      tr.className = "hover:bg-gray-50";
+
+      tr.innerHTML = `
+        <td class="p-2 border-b">
+          <input class="w-40 border rounded-lg px-2 py-1" value="${escapeAttr(r.order)}" data-id="${r.id}" data-field="order" placeholder="z.B. 123-456">
+        </td>
+        <td class="p-2 border-b">
+          <input type="date" class="w-36 border rounded-lg px-2 py-1" value="${escapeAttr(r.date)}" data-id="${r.id}" data-field="date">
+        </td>
+        <td class="p-2 border-b">
+          <input class="w-72 border rounded-lg px-2 py-1" value="${escapeAttr(r.item)}" data-id="${r.id}" data-field="item" placeholder="Artikel">
+        </td>
+
+        <td class="p-2 border-b text-right">
+          <input inputmode="decimal" class="w-28 border rounded-lg px-2 py-1 text-right" value="${escapeAttr(r.sell)}" data-id="${r.id}" data-field="sell" placeholder="0,00">
+        </td>
+        <td class="p-2 border-b text-right">
+          <input inputmode="decimal" class="w-28 border rounded-lg px-2 py-1 text-right" value="${escapeAttr(r.buy)}" data-id="${r.id}" data-field="buy" placeholder="0,00">
+        </td>
+        <td class="p-2 border-b text-right">
+          <input inputmode="decimal" class="w-28 border rounded-lg px-2 py-1 text-right" value="${escapeAttr(r.fees)}" data-id="${r.id}" data-field="fees" placeholder="0,00">
+        </td>
+        <td class="p-2 border-b text-right">
+          <input inputmode="decimal" class="w-28 border rounded-lg px-2 py-1 text-right" value="${escapeAttr(r.ship)}" data-id="${r.id}" data-field="ship" placeholder="0,00">
+        </td>
+
+        <td class="p-2 border-b text-right font-semibold">${euro(c.profit)}</td>
+        <td class="p-2 border-b text-right text-gray-600">${euro(c.tax40)}</td>
+
+        <td class="p-2 border-b">
+          <input class="w-64 border rounded-lg px-2 py-1" value="${escapeAttr(r.note)}" data-id="${r.id}" data-field="note" placeholder="Notiz">
+        </td>
+
+        <td class="p-2 border-b">
+          <button class="delIncomeBtn bg-red-600 text-white px-3 py-2 rounded-xl text-xs" data-id="${r.id}">Löschen</button>
+        </td>
+      `;
+
+      body.appendChild(tr);
+    }
+
+    el("incomeSumSell").textContent = euro(sumSell);
+    el("incomeSumProfit").textContent = euro(sumProfit);
+    el("incomeSumTax").textContent = euro(sumTax);
+
+    // order summary
+    let html = "";
+    for (const [order, p] of orderProfits.entries()) {
+      html += `<div>Bestellnr. <b>${escapeHtml(order)}</b>: ${euro(p)}</div>`;
+    }
+    el("orderSummary").innerHTML = html || `<div class="text-gray-500">Noch keine Bestellnummern eingetragen.</div>`;
+  }
+
+  // ----- render expense
+  function renderExpense() {
+    const year = getYear();
+    const body = el("expenseBody");
+    body.innerHTML = "";
+
+    const yearRows = state.expense.filter(r => inYear(r.date, year)).sort((a,b) => (b.date||"").localeCompare(a.date||""));
+    let sum = 0;
+
+    for (const r of yearRows) {
+      const amt = parseGermanNumber(r.amount);
+      sum += amt;
+
+      const tr = document.createElement("tr");
+      tr.className = "hover:bg-gray-50";
+      tr.innerHTML = `
+        <td class="p-2 border-b">
+          <input type="date" class="w-36 border rounded-lg px-2 py-1" value="${escapeAttr(r.date)}" data-id="${r.id}" data-field="date">
+        </td>
+        <td class="p-2 border-b">
+          <select class="w-44 border rounded-lg px-2 py-1" data-id="${r.id}" data-field="cat">
+            ${["Wareneinkauf","Gebühren","Versand","Software","Werbung","Büro/Material","Sonstiges"].map(c => `<option ${c===r.cat?"selected":""}>${c}</option>`).join("")}
+          </select>
+        </td>
+        <td class="p-2 border-b">
+          <input class="w-96 border rounded-lg px-2 py-1" value="${escapeAttr(r.desc)}" data-id="${r.id}" data-field="desc" placeholder="Beschreibung">
+        </td>
+        <td class="p-2 border-b text-right">
+          <input inputmode="decimal" class="w-28 border rounded-lg px-2 py-1 text-right" value="${escapeAttr(r.amount)}" data-id="${r.id}" data-field="amount" placeholder="0,00">
+        </td>
+        <td class="p-2 border-b">
+          <button class="delExpenseBtn bg-red-600 text-white px-3 py-2 rounded-xl text-xs" data-id="${r.id}">Löschen</button>
+        </td>
+      `;
+      body.appendChild(tr);
+    }
+
+    el("expenseSum").textContent = euro(sum);
+  }
+
+  // ----- dashboard + EÜR + chart
+  let chart = null;
+
+  function renderAll() {
+    const year = getYear();
+
+    // income sums
+    let revenue = 0;
+    const monthlyProfit = Array(12).fill(0);
+    const monthlyHasAny = Array(12).fill(false);
+
+    for (const r of state.income) {
+      if (!inYear(r.date, year)) continue;
+      const d = new Date(r.date);
+      const c = calcIncomeRow(r);
+      revenue += c.sell;
+      monthlyProfit[d.getMonth()] += c.profit;
+      monthlyHasAny[d.getMonth()] = true;
+    }
+
+    // expense sums
+    let expense = 0;
+    for (const r of state.expense) {
+      if (!inYear(r.date, year)) continue;
+      const d = new Date(r.date);
+      const amt = parseGermanNumber(r.amount);
+      expense += amt;
+      monthlyProfit[d.getMonth()] -= amt;
+      monthlyHasAny[d.getMonth()] = true;
+    }
+
+    const profit = revenue - expense;
+    const tax40 = profit > 0 ? profit * 0.4 : 0;
+
+    // forecast: based on months that have any data (income or expense)
+    const monthsWithData = monthlyHasAny.filter(Boolean).length || (new Date().getFullYear()===year ? (new Date().getMonth()+1) : 12);
+    const forecast = monthsWithData > 0 ? (profit / monthsWithData) * 12 : 0;
+
+    // KPIs
+    el("kpiRevenue").textContent = euro(revenue);
+    el("kpiExpense").textContent = euro(expense);
+    el("kpiProfit").textContent = euro(profit);
+    el("kpiTax40").textContent = euro(tax40);
+    el("kpiForecast").textContent = euro(forecast);
+
+    // KU warning
+    const warn = el("kuWarning");
+    if (revenue >= 20000) {
+      warn.className = "p-4 rounded-2xl bg-red-100 text-red-900";
+      warn.textContent = "⚠ Achtung: Du näherst dich der 22.000 € Kleinunternehmer-Grenze (Umsatz).";
+      warn.classList.remove("hidden");
+    } else if (revenue >= 17000) {
+      warn.className = "p-4 rounded-2xl bg-yellow-100 text-yellow-900";
+      warn.textContent = "Hinweis: Umsatz steigt Richtung Kleinunternehmer-Grenze (22.000 €).";
+      warn.classList.remove("hidden");
+    } else {
+      warn.classList.add("hidden");
+    }
+
+    // EÜR
+    el("euerIncome").textContent = euro(revenue);
+    el("euerExpense").textContent = euro(expense);
+    el("euerProfit").textContent = euro(profit);
+    el("euerTax40").textContent = euro(tax40);
+
+    // Chart
+    const ctx = el("profitChart");
+    if (ctx) {
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: ["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"],
+          datasets: [{ label: "Monatsgewinn", data: monthlyProfit, borderWidth: 2, fill: false }]
+        },
+        options: {
+          responsive: true,
+          animation: false,
+          plugins: { legend: { display: true } },
+          scales: { y: { ticks: { callback: (v) => v.toLocaleString("de-DE") } } }
+        }
+      });
+    }
+  }
+
+  // ----- exports
+  function downloadBlob(filename, text, mime="text/csv;charset=utf-8") {
+    const blob = new Blob([text], { type: mime });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function exportIncomeCSV() {
+    const year = getYear();
+    const rows = state.income.filter(r => inYear(r.date, year));
+    const header = ["Bestellnr","Datum","Artikel","Verkauf","Einkauf","Gebühren","Versand","Gewinn","Steuer40","Notiz"];
+    const lines = [header.join(";")];
+
+    for (const r of rows) {
+      const c = calcIncomeRow(r);
+      lines.push([
+        r.order || "",
+        r.date || "",
+        (r.item || "").replaceAll(";", ","),
+        c.sell,
+        c.buy,
+        c.fees,
+        c.ship,
+        c.profit,
+        c.tax40,
+        (r.note || "").replaceAll(";", ",")
+      ].join(";"));
+    }
+    downloadBlob(`einnahmen-${year}.csv`, lines.join("\n"));
+  }
+
+  function exportExpenseCSV() {
+    const year = getYear();
+    const rows = state.expense.filter(r => inYear(r.date, year));
+    const header = ["Datum","Kategorie","Beschreibung","Betrag"];
+    const lines = [header.join(";")];
+
+    for (const r of rows) {
+      lines.push([
+        r.date || "",
+        r.cat || "",
+        (r.desc || "").replaceAll(";", ","),
+        parseGermanNumber(r.amount)
+      ].join(";"));
+    }
+    downloadBlob(`ausgaben-${year}.csv`, lines.join("\n"));
+  }
+
+  function exportEuerCSV() {
+    const year = getYear();
+
+    let revenue = 0;
+    for (const r of state.income) if (inYear(r.date, year)) revenue += calcIncomeRow(r).sell;
+
+    let expense = 0;
+    for (const r of state.expense) if (inYear(r.date, year)) expense += parseGermanNumber(r.amount);
+
+    const profit = revenue - expense;
+    const tax40 = profit > 0 ? profit * 0.4 : 0;
+
+    const lines = [
+      "EÜR Kleinunternehmer §19",
+      `Jahr;${year}`,
+      `Betriebseinnahmen;${revenue}`,
+      `Betriebsausgaben;${expense}`,
+      `Gewinn;${profit}`,
+      `SteuerRuecklage40;${tax40}`
+    ];
+    downloadBlob(`EÜR-${year}.csv`, lines.join("\n"));
+  }
+
+  // ----- backup/import/clear
+  function backupJSON() {
+    downloadBlob("ebay-backup.json", JSON.stringify(state, null, 2), "application/json");
+  }
+
+  async function importJSON(file) {
+    const txt = await file.text();
+    const obj = JSON.parse(txt);
+    if (!obj || typeof obj !== "object") throw new Error("Ungültiges JSON");
+    if (!Array.isArray(obj.income) || !Array.isArray(obj.expense)) throw new Error("Fehlende income/expense Felder");
+
+    // normalize
+    state = {
+      income: obj.income.map(r => ({
+        id: r.id || uid(),
+        order: r.order || "",
+        date: r.date || todayISO(),
+        item: r.item || "",
+        sell: r.sell ?? "",
+        buy: r.buy ?? "",
+        fees: r.fees ?? "",
+        ship: r.ship ?? "",
+        note: r.note || ""
+      })),
+      expense: obj.expense.map(r => ({
+        id: r.id || uid(),
+        date: r.date || todayISO(),
+        cat: r.cat || "Sonstiges",
+        desc: r.desc || "",
+        amount: r.amount ?? ""
+      }))
+    };
+
+    saveState();
+    renderIncome();
+    renderExpense();
+    renderAll();
+  }
+
+  function clearAll() {
+    if (!confirm("Wirklich ALLE Daten löschen?")) return;
+    state = { income: [], expense: [] };
+    localStorage.removeItem(STORAGE_KEY);
+    // start with one row each for convenience
+    addIncome();
+    addExpense();
+  }
+
+  // ----- delegated input handling + formatting on blur
+  function attachDelegates() {
+    el("incomeBody").addEventListener("input", (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLElement)) return;
+      const id = t.getAttribute("data-id");
+      const field = t.getAttribute("data-field");
+      if (!id || !field) return;
+      updateIncome(id, field, t.value);
+    });
+
+    el("incomeBody").addEventListener("blur", (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLInputElement)) return;
+      const field = t.getAttribute("data-field");
+      if (!field) return;
+      if (["sell","buy","fees","ship"].includes(field)) {
+        // format de on blur
+        const n = parseGermanNumber(t.value);
+        t.value = n ? formatDe(n) : "";
+        const id = t.getAttribute("data-id");
+        if (id) updateIncome(id, field, t.value);
+      }
+    }, true);
+
+    el("incomeBody").addEventListener("click", (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLElement)) return;
+      if (t.classList.contains("delIncomeBtn")) {
+        const id = t.getAttribute("data-id");
+        if (id) delIncome(id);
+      }
+    });
+
+    el("expenseBody").addEventListener("input", (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLElement)) return;
+      const id = t.getAttribute("data-id");
+      const field = t.getAttribute("data-field");
+      if (!id || !field) return;
+      updateExpense(id, field, t.value);
+    });
+
+    el("expenseBody").addEventListener("blur", (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLInputElement)) return;
+      const field = t.getAttribute("data-field");
+      if (field === "amount") {
+        const n = parseGermanNumber(t.value);
+        t.value = n ? formatDe(n) : "";
+        const id = t.getAttribute("data-id");
+        if (id) updateExpense(id, field, t.value);
+      }
+    }, true);
+
+    el("expenseBody").addEventListener("click", (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLElement)) return;
+      if (t.classList.contains("delExpenseBtn")) {
+        const id = t.getAttribute("data-id");
+        if (id) delExpense(id);
+      }
+    });
+  }
+
+  // ----- escaping
+  function escapeAttr(s) {
+    return String(s ?? "")
+      .replace(/&/g,"&amp;")
+      .replace(/\"/g,"&quot;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;");
+  }
+  function escapeHtml(s) {
+    return String(s ?? "")
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;");
+  }
+
+  // ----- wire buttons
+  function wireButtons() {
+    el("addIncomeBtn").addEventListener("click", addIncome);
+    el("addExpenseBtn").addEventListener("click", addExpense);
+
+    el("exportIncomeBtn").addEventListener("click", exportIncomeCSV);
+    el("exportExpenseBtn").addEventListener("click", exportExpenseCSV);
+    el("exportEuerBtn").addEventListener("click", exportEuerCSV);
+
+    el("backupBtn").addEventListener("click", backupJSON);
+    el("importInput").addEventListener("change", async (e) => {
+      const f = e.target.files?.[0];
+      if (!f) return;
+      try {
+        await importJSON(f);
+        alert("Import erfolgreich ✅");
+      } catch (err) {
+        alert("Import fehlgeschlagen: " + err.message);
+      } finally {
+        e.target.value = "";
+      }
+    });
+
+    el("clearBtn").addEventListener("click", clearAll);
+  }
+
+  // ----- init
+  initYears();
+
+  // ensure at least one row exists
+  if (!state.income.length) state.income.push({
+    id: uid(), order:"", date: todayISO(), item:"", sell:"", buy:"", fees:"", ship:"", note:""
+  });
+  if (!state.expense.length) state.expense.push({
+    id: uid(), date: todayISO(), cat:"Sonstiges", desc:"", amount:""
+  });
+  saveState();
+
+  wireButtons();
+  attachDelegates();
+
+  // initial render
+  renderIncome();
+  renderExpense();
+  renderAll();
+  showTab("dashboard");
+})();
 </script>
-
 </body>
 </html>
