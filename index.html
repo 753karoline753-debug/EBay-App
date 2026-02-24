@@ -3,27 +3,57 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Kleingewerbe App</title>
+<title>Kleingewerbe App Pro</title>
 <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
 <body class="bg-gray-100">
 
-<div class="max-w-xl mx-auto p-4 space-y-6">
-
-<h1 class="text-2xl font-bold text-center">Kleingewerbe App</h1>
-
-<div class="flex justify-between">
-<button onclick="showTab('income')" class="bg-black text-white px-4 py-2 rounded-xl">Verkäufe</button>
-<button onclick="showTab('dashboard')" class="bg-gray-300 px-4 py-2 rounded-xl">Übersicht</button>
+<div id="lockScreen" class="fixed inset-0 bg-white flex flex-col justify-center items-center space-y-4">
+<h1 class="text-2xl font-bold">App geschützt</h1>
+<input id="pinInput" type="password" placeholder="PIN eingeben"
+class="border p-3 rounded-xl text-center">
+<button onclick="unlock()" class="bg-black text-white px-6 py-2 rounded-xl">Öffnen</button>
 </div>
 
-<!-- VERKÄUFE -->
+<div id="app" class="hidden max-w-xl mx-auto p-4 space-y-6">
+
+<h1 class="text-2xl font-bold text-center">Kleingewerbe Manager</h1>
+
+<!-- Navigation -->
+<div class="flex bg-white rounded-xl shadow overflow-hidden">
+<button id="btnIncome" onclick="showTab('income')" class="flex-1 py-3">Einnahmen</button>
+<button id="btnExpense" onclick="showTab('expense')" class="flex-1 py-3">Ausgaben</button>
+<button id="btnDashboard" onclick="showTab('dashboard')" class="flex-1 py-3">Übersicht</button>
+</div>
+
+<!-- EINNAHMEN -->
 <div id="income" class="space-y-4">
 
-<button onclick="addIncome()" class="w-full bg-black text-white py-3 rounded-xl">+ Neuer Verkauf</button>
+<button onclick="addIncome()" class="w-full bg-black text-white py-3 rounded-xl">
++ Einnahme
+</button>
 
 <div id="incomeList" class="space-y-4"></div>
+
+<button onclick="exportCSV('income')" class="w-full bg-green-600 text-white py-2 rounded-xl">
+CSV Export Einnahmen
+</button>
+
+</div>
+
+<!-- AUSGABEN -->
+<div id="expense" class="hidden space-y-4">
+
+<button onclick="addExpense()" class="w-full bg-black text-white py-3 rounded-xl">
++ Ausgabe
+</button>
+
+<div id="expenseList" class="space-y-4"></div>
+
+<button onclick="exportCSV('expense')" class="w-full bg-green-600 text-white py-2 rounded-xl">
+CSV Export Ausgaben
+</button>
 
 </div>
 
@@ -31,18 +61,23 @@
 <div id="dashboard" class="hidden space-y-4">
 
 <div class="bg-white p-4 rounded-2xl shadow">
-<div class="text-gray-500">Gesamtgewinn</div>
-<div id="totalProfit" class="text-2xl font-bold">0 €</div>
+<div class="text-gray-500">Gewinn vor Steuer</div>
+<div id="profitBefore" class="text-xl font-bold">0 €</div>
 </div>
 
 <div class="bg-yellow-100 p-4 rounded-2xl shadow">
 <div class="text-gray-500">40% Rücklage</div>
-<div id="tax" class="text-2xl font-bold">0 €</div>
+<div id="tax" class="text-xl font-bold">0 €</div>
+</div>
+
+<div class="bg-green-100 p-4 rounded-2xl shadow">
+<div class="text-gray-500">Gewinn nach Steuer</div>
+<div id="profitAfter" class="text-2xl font-bold">0 €</div>
 </div>
 
 <div class="bg-white p-4 rounded-2xl shadow">
-<div class="text-gray-500">Ø Marge</div>
-<div id="avgMargin" class="text-2xl font-bold">0 %</div>
+<div class="text-gray-500">Aktueller Monat Gewinn</div>
+<div id="monthProfit" class="text-xl font-bold">0 €</div>
 </div>
 
 </div>
@@ -50,112 +85,128 @@
 </div>
 
 <script>
-const KEY="app_clean_v1";
-let data=JSON.parse(localStorage.getItem(KEY)||'{"income":[]}');
+const PIN="1234"; // hier kannst du deinen PIN ändern
+const KEY="kleingewerbe_pro_v4";
+
+let data=JSON.parse(localStorage.getItem(KEY)||'{"income":[],"expense":[]}');
+
+function unlock(){
+if(document.getElementById("pinInput").value===PIN){
+document.getElementById("lockScreen").classList.add("hidden");
+document.getElementById("app").classList.remove("hidden");
+}else{
+alert("Falscher PIN");
+}
+}
 
 function save(){localStorage.setItem(KEY,JSON.stringify(data));}
 function euro(n){return n.toLocaleString("de-DE",{style:"currency",currency:"EUR"});}
 function parseNum(v){if(!v)return 0;return parseFloat(v.toString().replace(/\./g,"").replace(",", "."))||0;}
 
 function showTab(tab){
-document.getElementById("income").classList.add("hidden");
-document.getElementById("dashboard").classList.add("hidden");
+["income","expense","dashboard"].forEach(t=>document.getElementById(t).classList.add("hidden"));
+["btnIncome","btnExpense","btnDashboard"].forEach(b=>document.getElementById(b).classList.remove("bg-black","text-white"));
 document.getElementById(tab).classList.remove("hidden");
+document.getElementById("btn"+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.add("bg-black","text-white");
 updateDashboard();
 }
 
 function addIncome(){
-data.income.push({
-id:crypto.randomUUID(),
-item:"",
-sell:"",
-shipCustomer:"",
-buy:"",
-fees:"",
-shipCost:""
-});
-renderIncome();
-save();
+data.income.push({id:crypto.randomUUID(),title:"",amount:"",date:new Date().toISOString().slice(0,10)});
+renderIncome(); save();
+}
+
+function addExpense(){
+data.expense.push({id:crypto.randomUUID(),title:"",amount:"",date:new Date().toISOString().slice(0,10)});
+renderExpense(); save();
 }
 
 function renderIncome(){
 const list=document.getElementById("incomeList");
 list.innerHTML="";
-
 data.income.forEach(r=>{
-const revenue=parseNum(r.sell)+parseNum(r.shipCustomer);
-const cost=parseNum(r.buy)+parseNum(r.fees)+parseNum(r.shipCost);
-const profit=revenue-cost;
-const margin=revenue>0?(profit/revenue*100):0;
-
 list.innerHTML+=`
-<div class="bg-white p-4 rounded-2xl shadow space-y-3">
-<input class="w-full border p-2 rounded-xl" placeholder="Artikel" value="${r.item}" oninput="upd('${r.id}','item',this.value)">
-
-<div class="grid grid-cols-2 gap-2">
-<input inputmode="decimal" class="border p-2 rounded-xl" placeholder="Verkauf" value="${r.sell}" oninput="upd('${r.id}','sell',this.value)">
-<input inputmode="decimal" class="border p-2 rounded-xl" placeholder="Versand Kunde" value="${r.shipCustomer}" oninput="upd('${r.id}','shipCustomer',this.value)">
-<input inputmode="decimal" class="border p-2 rounded-xl" placeholder="EK" value="${r.buy}" oninput="upd('${r.id}','buy',this.value)">
-<input inputmode="decimal" class="border p-2 rounded-xl" placeholder="Gebühren" value="${r.fees}" oninput="upd('${r.id}','fees',this.value)">
-<input inputmode="decimal" class="border p-2 rounded-xl col-span-2" placeholder="Versandkosten" value="${r.shipCost}" oninput="upd('${r.id}','shipCost',this.value)">
-</div>
-
-<div class="flex justify-between font-semibold">
-<div>Gewinn:</div>
-<div>${euro(profit)}</div>
-</div>
-
-<div class="flex justify-between text-sm text-gray-600">
-<div>Marge:</div>
-<div>${margin.toFixed(1)}%</div>
-</div>
-
-<button onclick="del('${r.id}')" class="w-full bg-red-600 text-white py-2 rounded-xl">Löschen</button>
-</div>
-`;
+<div class="bg-white p-4 rounded-2xl shadow space-y-2">
+<input class="w-full border p-2 rounded-xl" value="${r.title}" placeholder="Bezeichnung"
+oninput="updInc('${r.id}','title',this.value)">
+<input type="date" class="w-full border p-2 rounded-xl"
+value="${r.date}" onchange="updInc('${r.id}','date',this.value)">
+<input inputmode="decimal" class="w-full border p-2 rounded-xl"
+value="${r.amount}" placeholder="Betrag"
+oninput="updInc('${r.id}','amount',this.value)">
+<button onclick="delInc('${r.id}')" class="w-full bg-red-600 text-white py-2 rounded-xl">
+Löschen
+</button>
+</div>`;
 });
-
-updateDashboard();
 }
 
-function upd(id,f,v){
-data.income.find(r=>r.id===id)[f]=v;
-save();
-updateDashboard();
+function renderExpense(){
+const list=document.getElementById("expenseList");
+list.innerHTML="";
+data.expense.forEach(r=>{
+list.innerHTML+=`
+<div class="bg-white p-4 rounded-2xl shadow space-y-2">
+<input class="w-full border p-2 rounded-xl" value="${r.title}" placeholder="Bezeichnung"
+oninput="updExp('${r.id}','title',this.value)">
+<input type="date" class="w-full border p-2 rounded-xl"
+value="${r.date}" onchange="updExp('${r.id}','date',this.value)">
+<input inputmode="decimal" class="w-full border p-2 rounded-xl"
+value="${r.amount}" placeholder="Betrag"
+oninput="updExp('${r.id}','amount',this.value)">
+<button onclick="delExp('${r.id}')" class="w-full bg-red-600 text-white py-2 rounded-xl">
+Löschen
+</button>
+</div>`;
+});
 }
 
-function del(id){
-data.income=data.income.filter(r=>r.id!==id);
-save();
-renderIncome();
-}
+function updInc(id,f,v){data.income.find(r=>r.id===id)[f]=v;save();updateDashboard();}
+function updExp(id,f,v){data.expense.find(r=>r.id===id)[f]=v;save();updateDashboard();}
+function delInc(id){data.income=data.income.filter(r=>r.id!==id);save();renderIncome();}
+function delExp(id){data.expense=data.expense.filter(r=>r.id!==id);save();renderExpense();}
 
 function updateDashboard(){
-let totalProfit=0;
-let totalMargin=0;
-let count=0;
+let totalIncome=0,totalExpense=0,monthProfit=0;
+const currentMonth=new Date().getMonth();
 
 data.income.forEach(r=>{
-const revenue=parseNum(r.sell)+parseNum(r.shipCustomer);
-const cost=parseNum(r.buy)+parseNum(r.fees)+parseNum(r.shipCost);
-const profit=revenue-cost;
-if(revenue>0){
-totalProfit+=profit;
-totalMargin+=profit/revenue*100;
-count++;
-}
+totalIncome+=parseNum(r.amount);
+if(new Date(r.date).getMonth()===currentMonth)
+monthProfit+=parseNum(r.amount);
 });
 
-const avgMargin=count?totalMargin/count:0;
-const tax=totalProfit>0?totalProfit*0.4:0;
+data.expense.forEach(r=>{
+totalExpense+=parseNum(r.amount);
+if(new Date(r.date).getMonth()===currentMonth)
+monthProfit-=parseNum(r.amount);
+});
 
-document.getElementById("totalProfit").innerText=euro(totalProfit);
+const profitBefore=totalIncome-totalExpense;
+const tax=profitBefore>0?profitBefore*0.4:0;
+const profitAfter=profitBefore-tax;
+
+document.getElementById("profitBefore").innerText=euro(profitBefore);
 document.getElementById("tax").innerText=euro(tax);
-document.getElementById("avgMargin").innerText=avgMargin.toFixed(1)+" %";
+document.getElementById("profitAfter").innerText=euro(profitAfter);
+document.getElementById("monthProfit").innerText=euro(monthProfit);
+}
+
+function exportCSV(type){
+let rows="Datum;Titel;Betrag\n";
+data[type].forEach(r=>{
+rows+=`${r.date};${r.title};${parseNum(r.amount)}\n`;
+});
+const blob=new Blob([rows],{type:"text/csv"});
+const link=document.createElement("a");
+link.href=URL.createObjectURL(blob);
+link.download=type+".csv";
+link.click();
 }
 
 renderIncome();
-updateDashboard();
+renderExpense();
+showTab("income");
 </script>
 
 </body>
