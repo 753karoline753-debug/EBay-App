@@ -17,7 +17,7 @@
 <div class="flex bg-white rounded-xl shadow overflow-hidden">
 <button id="btnIncome" onclick="showTab('income')" class="flex-1 py-3">Einnahmen</button>
 <button id="btnExpense" onclick="showTab('expense')" class="flex-1 py-3">Ausgaben</button>
-<button id="btnDashboard" onclick="showTab('dashboard')" class="flex-1 py-3">Übersicht</button>
+<button id="btnDashboard" onclick="showTab('dashboard')" class="flex-1 py-3">Gesamt</button>
 </div>
 
 <!-- EINNAHMEN -->
@@ -47,17 +47,27 @@
 
 <div class="bg-white p-4 rounded-2xl shadow">
 <div class="text-gray-500">Gesamtgewinn</div>
-<div id="profitBefore" class="text-2xl font-bold">0 €</div>
+<div id="totalProfit" class="text-2xl font-bold">0 €</div>
 </div>
 
 <div class="bg-yellow-100 p-4 rounded-2xl shadow">
-<div class="text-gray-500">40% Steuer Rücklage</div>
-<div id="tax" class="text-xl font-bold">0 €</div>
+<div class="text-gray-500">Gesamte 40% Rücklage</div>
+<div id="totalTax" class="text-xl font-bold">0 €</div>
 </div>
 
 <div class="bg-green-100 p-4 rounded-2xl shadow">
-<div class="text-gray-500">Gewinn nach Rücklage</div>
-<div id="profitAfter" class="text-2xl font-bold">0 €</div>
+<div class="text-gray-500">Gesamt Netto</div>
+<div id="totalNet" class="text-2xl font-bold">0 €</div>
+</div>
+
+<div class="bg-white p-4 rounded-2xl shadow">
+<div class="text-gray-500">Anzahl Verkäufe</div>
+<div id="totalCount" class="text-xl font-bold">0</div>
+</div>
+
+<div class="bg-white p-4 rounded-2xl shadow">
+<div class="text-gray-500">Ø Gewinn pro Artikel</div>
+<div id="avgProfit" class="text-xl font-bold">0 €</div>
 </div>
 
 </div>
@@ -65,7 +75,7 @@
 </div>
 
 <script>
-const KEY="kleingewerbe_cards_ek";
+const KEY="kleingewerbe_structured";
 let data=JSON.parse(localStorage.getItem(KEY)||'{"income":[],"expense":[]}');
 
 function save(){localStorage.setItem(KEY,JSON.stringify(data));}
@@ -109,6 +119,8 @@ data.income.forEach(r=>{
 const sell=parseNum(r.sell);
 const ek=parseNum(r.ek);
 const profit=sell-ek;
+const tax=profit>0?profit*0.4:0;
+const net=profit-tax;
 
 list.innerHTML+=`
 <div class="bg-white p-4 rounded-2xl shadow space-y-3">
@@ -125,9 +137,10 @@ oninput="updInc('${r.id}','sell',this.value)">
 value="${r.ek}" placeholder="Einkaufspreis (EK)"
 oninput="updInc('${r.id}','ek',this.value)">
 
-<div class="flex justify-between font-semibold">
-<div>Gewinn:</div>
-<div>${euro(profit)}</div>
+<div class="text-sm space-y-1">
+<div>Gewinn: <strong>${euro(profit)}</strong></div>
+<div>40% Rücklage: <strong>${euro(tax)}</strong></div>
+<div>Netto: <strong>${euro(net)}</strong></div>
 </div>
 
 <button onclick="delInc('${r.id}')"
@@ -182,11 +195,15 @@ totalExpense+=parseNum(r.amount);
 totalProfit-=totalExpense;
 
 const tax=totalProfit>0?totalProfit*0.4:0;
-const profitAfter=totalProfit-tax;
+const net=totalProfit-tax;
+const count=data.income.length;
+const avg=count?totalProfit/count:0;
 
-document.getElementById("profitBefore").innerText=euro(totalProfit);
-document.getElementById("tax").innerText=euro(tax);
-document.getElementById("profitAfter").innerText=euro(profitAfter);
+document.getElementById("totalProfit").innerText=euro(totalProfit);
+document.getElementById("totalTax").innerText=euro(tax);
+document.getElementById("totalNet").innerText=euro(net);
+document.getElementById("totalCount").innerText=count;
+document.getElementById("avgProfit").innerText=euro(avg);
 }
 
 renderIncome();
