@@ -3,33 +3,36 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>eBay Kleingewerbe App</title>
+<title>Kleingewerbe Profi App</title>
 <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
 <body class="bg-gray-100 p-4">
 
-<div class="max-w-6xl mx-auto bg-white p-6 rounded-2xl shadow-xl">
+<div class="max-w-7xl mx-auto bg-white p-6 rounded-2xl shadow-xl">
 
-<h1 class="text-2xl font-bold mb-6">eBay Kleingewerbe</h1>
+<h1 class="text-2xl font-bold mb-6">Kleingewerbe Profi Manager</h1>
 
-<div class="flex gap-3 mb-6">
-<button onclick="show('income')" class="bg-black text-white px-4 py-2 rounded-xl">Einnahmen</button>
-<button onclick="show('expense')" class="bg-gray-200 px-4 py-2 rounded-xl">Ausgaben</button>
-<button onclick="show('dashboard')" class="bg-gray-200 px-4 py-2 rounded-xl">Dashboard</button>
+<div class="flex flex-wrap gap-3 mb-6">
+<select id="yearSelect" class="border px-3 py-2 rounded-xl"></select>
+<button onclick="showTab('income')" class="bg-black text-white px-4 py-2 rounded-xl">Einnahmen</button>
+<button onclick="showTab('expense')" class="bg-gray-200 px-4 py-2 rounded-xl">Ausgaben</button>
+<button onclick="showTab('dashboard')" class="bg-gray-200 px-4 py-2 rounded-xl">Dashboard</button>
+<button onclick="showTab('euer')" class="bg-gray-200 px-4 py-2 rounded-xl">EÜR</button>
 </div>
 
 <!-- EINNAHMEN -->
 <div id="income">
 <button onclick="addIncome()" class="bg-black text-white px-4 py-2 rounded-xl mb-4">+ Verkauf</button>
-
 <table class="w-full text-sm border">
 <thead class="bg-gray-100">
 <tr>
 <th class="p-2">Datum</th>
 <th class="p-2">Artikel</th>
 <th class="p-2 text-right">Verkauf</th>
-<th class="p-2 text-right">Kosten</th>
+<th class="p-2 text-right">Einkauf</th>
+<th class="p-2 text-right">Gebühren</th>
+<th class="p-2 text-right">Versand</th>
 <th class="p-2 text-right">Gewinn</th>
 <th></th>
 </tr>
@@ -41,7 +44,6 @@
 <!-- AUSGABEN -->
 <div id="expense" class="hidden">
 <button onclick="addExpense()" class="bg-black text-white px-4 py-2 rounded-xl mb-4">+ Ausgabe</button>
-
 <table class="w-full text-sm border">
 <thead class="bg-gray-100">
 <tr>
@@ -56,103 +58,108 @@
 </div>
 
 <!-- DASHBOARD -->
-<div id="dashboard" class="hidden">
+<div id="dashboard" class="hidden space-y-6">
 
 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+<div class="bg-gray-100 p-4 rounded-xl">
+<div>Jahresumsatz</div>
+<div id="rev" class="font-bold text-xl">0 €</div>
+</div>
 
 <div class="bg-gray-100 p-4 rounded-xl">
-<div>Gewinn gesamt</div>
-<div id="totalProfit" class="font-bold text-xl">0 €</div>
+<div>Gewinn</div>
+<div id="profit" class="font-bold text-xl">0 €</div>
 </div>
 
 <div class="bg-yellow-100 p-4 rounded-xl">
 <div>40% Rücklage</div>
-<div id="totalTax" class="font-bold text-xl">0 €</div>
-</div>
-
-<div class="bg-gray-100 p-4 rounded-xl">
-<div>Ausgaben gesamt</div>
-<div id="totalExpense" class="font-bold text-xl">0 €</div>
+<div id="tax" class="font-bold text-xl">0 €</div>
 </div>
 
 <div class="bg-blue-100 p-4 rounded-xl">
-<div>Jahres-Prognose</div>
+<div>Umsatz Prognose</div>
 <div id="forecast" class="font-bold text-xl">0 €</div>
 </div>
+</div>
+
+<div id="kuStatus" class="p-3 rounded-xl"></div>
 
 </div>
 
+<!-- EÜR -->
+<div id="euer" class="hidden">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<div class="bg-gray-100 p-4 rounded-xl">
+<div>Betriebseinnahmen</div>
+<div id="euerIncome" class="font-bold text-xl">0 €</div>
+</div>
+<div class="bg-gray-100 p-4 rounded-xl">
+<div>Betriebsausgaben</div>
+<div id="euerExpense" class="font-bold text-xl">0 €</div>
+</div>
+<div class="bg-gray-100 p-4 rounded-xl">
+<div>Gewinn</div>
+<div id="euerProfit" class="font-bold text-xl">0 €</div>
+</div>
+</div>
+<button onclick="exportEuer()" class="mt-4 bg-green-600 text-white px-4 py-2 rounded-xl">EÜR Export CSV</button>
 </div>
 
 </div>
 
 <script>
-const KEY="ebay_app_v2";
+const KEY="profi_app_v1";
 let data=JSON.parse(localStorage.getItem(KEY)||'{"income":[],"expense":[]}');
 
-function save(){
-localStorage.setItem(KEY,JSON.stringify(data));
-}
+function save(){localStorage.setItem(KEY,JSON.stringify(data));}
+function euro(n){return n.toLocaleString("de-DE",{style:"currency",currency:"EUR"});}
+function parseNum(v){if(!v)return 0;return parseFloat(v.toString().replace(/\./g,"").replace(",", "."))||0;}
 
-function euro(n){
-return n.toLocaleString("de-DE",{style:"currency",currency:"EUR"});
+function initYear(){
+const sel=document.getElementById("yearSelect");
+const now=new Date().getFullYear();
+for(let y=now-2;y<=now+1;y++){
+const o=document.createElement("option");
+o.value=y;o.text=y;
+if(y===now)o.selected=true;
+sel.appendChild(o);
 }
-
-function parseNumber(v){
-if(!v)return 0;
-return parseFloat(v.toString().replace(/\./g,"").replace(",", "."))||0;
 }
+initYear();
 
-function show(tab){
-document.getElementById("income").classList.add("hidden");
-document.getElementById("expense").classList.add("hidden");
-document.getElementById("dashboard").classList.add("hidden");
+function showTab(tab){
+["income","expense","dashboard","euer"].forEach(t=>document.getElementById(t).classList.add("hidden"));
 document.getElementById(tab).classList.remove("hidden");
 updateDashboard();
 }
 
 function addIncome(){
-data.income.push({
-id:crypto.randomUUID(),
-date:new Date().toISOString().slice(0,10),
-item:"",
-sell:"",
-cost:""
-});
-renderIncome();
-save();
+data.income.push({id:crypto.randomUUID(),date:new Date().toISOString().slice(0,10),item:"",sell:"",buy:"",fees:"",ship:""});
+renderIncome();save();
 }
 
 function addExpense(){
-data.expense.push({
-id:crypto.randomUUID(),
-date:new Date().toISOString().slice(0,10),
-cat:"",
-amount:""
-});
-renderExpense();
-save();
+data.expense.push({id:crypto.randomUUID(),date:new Date().toISOString().slice(0,10),cat:"",amount:""});
+renderExpense();save();
 }
 
 function renderIncome(){
 const body=document.getElementById("incomeBody");
 body.innerHTML="";
-data.income.forEach(row=>{
-const tr=document.createElement("tr");
-
-const sell=parseNumber(row.sell);
-const cost=parseNumber(row.cost);
-const profit=sell-cost;
-
-tr.innerHTML=`
-<td class="p-2"><input type="date" value="${row.date}" onchange="updateIncome('${row.id}','date',this.value)"></td>
-<td class="p-2"><input value="${row.item}" oninput="updateIncome('${row.id}','item',this.value)"></td>
-<td class="p-2 text-right"><input value="${row.sell}" inputmode="decimal" oninput="updateIncome('${row.id}','sell',this.value)"></td>
-<td class="p-2 text-right"><input value="${row.cost}" inputmode="decimal" oninput="updateIncome('${row.id}','cost',this.value)"></td>
+const year=document.getElementById("yearSelect").value;
+data.income.filter(r=>new Date(r.date).getFullYear()==year).forEach(r=>{
+const profit=parseNum(r.sell)-parseNum(r.buy)-parseNum(r.fees)-parseNum(r.ship);
+body.innerHTML+=`
+<tr>
+<td class="p-2"><input type="date" value="${r.date}" onchange="updInc('${r.id}','date',this.value)"></td>
+<td class="p-2"><input value="${r.item}" oninput="updInc('${r.id}','item',this.value)"></td>
+<td class="p-2 text-right"><input inputmode="decimal" value="${r.sell}" oninput="updInc('${r.id}','sell',this.value)"></td>
+<td class="p-2 text-right"><input inputmode="decimal" value="${r.buy}" oninput="updInc('${r.id}','buy',this.value)"></td>
+<td class="p-2 text-right"><input inputmode="decimal" value="${r.fees}" oninput="updInc('${r.id}','fees',this.value)"></td>
+<td class="p-2 text-right"><input inputmode="decimal" value="${r.ship}" oninput="updInc('${r.id}','ship',this.value)"></td>
 <td class="p-2 text-right font-semibold">${euro(profit)}</td>
-<td><button onclick="delIncome('${row.id}')" class="bg-red-600 text-white px-2 py-1 rounded">X</button></td>
-`;
-body.appendChild(tr);
+<td><button onclick="delInc('${r.id}')" class="bg-red-600 text-white px-2 py-1 rounded">X</button></td>
+</tr>`;
 });
 updateDashboard();
 }
@@ -160,68 +167,88 @@ updateDashboard();
 function renderExpense(){
 const body=document.getElementById("expenseBody");
 body.innerHTML="";
-data.expense.forEach(row=>{
-const tr=document.createElement("tr");
-tr.innerHTML=`
-<td class="p-2"><input type="date" value="${row.date}" onchange="updateExpense('${row.id}','date',this.value)"></td>
-<td class="p-2"><input value="${row.cat}" oninput="updateExpense('${row.id}','cat',this.value)"></td>
-<td class="p-2 text-right"><input value="${row.amount}" inputmode="decimal" oninput="updateExpense('${row.id}','amount',this.value)"></td>
-<td><button onclick="delExpense('${row.id}')" class="bg-red-600 text-white px-2 py-1 rounded">X</button></td>
-`;
-body.appendChild(tr);
+const year=document.getElementById("yearSelect").value;
+data.expense.filter(r=>new Date(r.date).getFullYear()==year).forEach(r=>{
+body.innerHTML+=`
+<tr>
+<td class="p-2"><input type="date" value="${r.date}" onchange="updExp('${r.id}','date',this.value)"></td>
+<td class="p-2"><input value="${r.cat}" oninput="updExp('${r.id}','cat',this.value)"></td>
+<td class="p-2 text-right"><input inputmode="decimal" value="${r.amount}" oninput="updExp('${r.id}','amount',this.value)"></td>
+<td><button onclick="delExp('${r.id}')" class="bg-red-600 text-white px-2 py-1 rounded">X</button></td>
+</tr>`;
 });
 updateDashboard();
 }
 
-function updateIncome(id,field,value){
-const row=data.income.find(r=>r.id===id);
-row[field]=value;
-save();
-updateDashboard();
-}
-
-function updateExpense(id,field,value){
-const row=data.expense.find(r=>r.id===id);
-row[field]=value;
-save();
-updateDashboard();
-}
-
-function delIncome(id){
-data.income=data.income.filter(r=>r.id!==id);
-save();
-renderIncome();
-}
-
-function delExpense(id){
-data.expense=data.expense.filter(r=>r.id!==id);
-save();
-renderExpense();
-}
+function updInc(id,f,v){data.income.find(r=>r.id===id)[f]=v;save();updateDashboard();}
+function updExp(id,f,v){data.expense.find(r=>r.id===id)[f]=v;save();updateDashboard();}
+function delInc(id){data.income=data.income.filter(r=>r.id!==id);save();renderIncome();}
+function delExp(id){data.expense=data.expense.filter(r=>r.id!==id);save();renderExpense();}
 
 function updateDashboard(){
-let profit=0;
-let expenseTotal=0;
+const year=document.getElementById("yearSelect").value;
+let revenue=0,expenseTotal=0;
 
-data.income.forEach(r=>{
-profit+=parseNumber(r.sell)-parseNumber(r.cost);
-});
+data.income.filter(r=>new Date(r.date).getFullYear()==year)
+.forEach(r=>revenue+=parseNum(r.sell));
 
-data.expense.forEach(r=>{
-expenseTotal+=parseNumber(r.amount);
-});
+data.expense.filter(r=>new Date(r.date).getFullYear()==year)
+.forEach(r=>expenseTotal+=parseNum(r.amount));
 
-const net=profit-expenseTotal;
-const tax=net>0?net*0.4:0;
-
+const profit=revenue-expenseTotal;
+const tax=profit>0?profit*0.4:0;
 const month=new Date().getMonth()+1;
-const forecast=(net/month)*12;
+const forecast=(revenue/month)*12;
 
-document.getElementById("totalProfit").innerText=euro(net);
-document.getElementById("totalTax").innerText=euro(tax);
-document.getElementById("totalExpense").innerText=euro(expenseTotal);
+document.getElementById("rev").innerText=euro(revenue);
+document.getElementById("profit").innerText=euro(profit);
+document.getElementById("tax").innerText=euro(tax);
 document.getElementById("forecast").innerText=euro(forecast);
+
+document.getElementById("euerIncome").innerText=euro(revenue);
+document.getElementById("euerExpense").innerText=euro(expenseTotal);
+document.getElementById("euerProfit").innerText=euro(profit);
+
+const ku=document.getElementById("kuStatus");
+if(revenue>=22000){
+ku.className="bg-red-200 p-3 rounded-xl";
+ku.innerText="⚠ Grenze überschritten!";
 }
+else if(revenue>=17000){
+ku.className="bg-yellow-200 p-3 rounded-xl";
+ku.innerText="⚠ Achtung: nahe 22.000 € Grenze";
+}
+else{
+ku.className="bg-green-200 p-3 rounded-xl";
+ku.innerText="✓ Unter der Grenze";
+}
+}
+
+function exportEuer(){
+const year=document.getElementById("yearSelect").value;
+let revenue=0,expenseTotal=0;
+data.income.filter(r=>new Date(r.date).getFullYear()==year)
+.forEach(r=>revenue+=parseNum(r.sell));
+data.expense.filter(r=>new Date(r.date).getFullYear()==year)
+.forEach(r=>expenseTotal+=parseNum(r.amount));
+
+let csv="EÜR "+year+"\\n";
+csv+="Einnahmen;"+revenue+"\\n";
+csv+="Ausgaben;"+expenseTotal+"\\n";
+csv+="Gewinn;"+(revenue-expenseTotal)+"\\n";
+
+const blob=new Blob([csv],{type:"text/csv"});
+const link=document.createElement("a");
+link.href=URL.createObjectURL(blob);
+link.download="EÜR_"+year+".csv";
+link.click();
+}
+
+document.getElementById("yearSelect").addEventListener("change",()=>{
+renderIncome();
+renderExpense();
+updateDashboard();
+});
 
 renderIncome();
 renderExpense();
