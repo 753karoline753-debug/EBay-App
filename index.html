@@ -22,29 +22,22 @@
 
 <!-- EINNAHMEN -->
 <div id="income" class="space-y-4">
-
 <button onclick="addIncome()" class="w-full bg-black text-white py-3 rounded-xl">
 + Neuer Verkauf
 </button>
-
 <div id="incomeList" class="space-y-4"></div>
-
 </div>
 
 <!-- AUSGABEN -->
 <div id="expense" class="hidden space-y-4">
-
 <button onclick="addExpense()" class="w-full bg-black text-white py-3 rounded-xl">
 + Ausgabe
 </button>
-
 <div id="expenseList" class="space-y-4"></div>
-
 </div>
 
 <!-- DASHBOARD -->
 <div id="dashboard" class="hidden space-y-4">
-
 <div class="bg-white p-4 rounded-2xl shadow">
 <div class="text-gray-500">Gesamtgewinn</div>
 <div id="totalProfit" class="text-2xl font-bold">0 €</div>
@@ -69,142 +62,186 @@
 <div class="text-gray-500">Ø Gewinn pro Artikel</div>
 <div id="avgProfit" class="text-xl font-bold">0 €</div>
 </div>
-
 </div>
 
 </div>
 
 <script>
-const KEY="kleingewerbe_structured";
-let data=JSON.parse(localStorage.getItem(KEY)||'{"income":[],"expense":[]}');
+const KEY="kleingewerbe_auto_save_v2";
 
-function save(){localStorage.setItem(KEY,JSON.stringify(data));}
-function euro(n){return n.toLocaleString("de-DE",{style:"currency",currency:"EUR"});}
-function parseNum(v){if(!v)return 0;return parseFloat(v.toString().replace(/\./g,"").replace(",", "."))||0;}
+let data = JSON.parse(localStorage.getItem(KEY)) || {
+  income: [],
+  expense: []
+};
+
+function save(){
+  localStorage.setItem(KEY, JSON.stringify(data));
+}
+
+function euro(n){
+  return n.toLocaleString("de-DE",{style:"currency",currency:"EUR"});
+}
+
+function parseNum(v){
+  if(!v) return 0;
+  return parseFloat(v.toString().replace(/\./g,"").replace(",", ".")) || 0;
+}
 
 function showTab(tab){
-["income","expense","dashboard"].forEach(t=>document.getElementById(t).classList.add("hidden"));
-["btnIncome","btnExpense","btnDashboard"].forEach(b=>document.getElementById(b).classList.remove("bg-black","text-white"));
-document.getElementById(tab).classList.remove("hidden");
-document.getElementById("btn"+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.add("bg-black","text-white");
-updateDashboard();
+  save();
+  ["income","expense","dashboard"].forEach(t=>document.getElementById(t).classList.add("hidden"));
+  ["btnIncome","btnExpense","btnDashboard"].forEach(b=>document.getElementById(b).classList.remove("bg-black","text-white"));
+  document.getElementById(tab).classList.remove("hidden");
+  document.getElementById("btn"+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.add("bg-black","text-white");
+  updateDashboard();
 }
 
 function addIncome(){
-data.income.push({
-id:crypto.randomUUID(),
-title:"",
-date:new Date().toISOString().slice(0,10),
-sell:"",
-ek:""
-});
-renderIncome(); save();
+  data.income.push({
+    id:crypto.randomUUID(),
+    title:"",
+    date:new Date().toISOString().slice(0,10),
+    sell:"",
+    ek:""
+  });
+  save();
+  renderIncome();
 }
 
 function addExpense(){
-data.expense.push({
-id:crypto.randomUUID(),
-title:"",
-date:new Date().toISOString().slice(0,10),
-amount:""
-});
-renderExpense(); save();
+  data.expense.push({
+    id:crypto.randomUUID(),
+    title:"",
+    date:new Date().toISOString().slice(0,10),
+    amount:""
+  });
+  save();
+  renderExpense();
 }
 
 function renderIncome(){
-const list=document.getElementById("incomeList");
-list.innerHTML="";
+  const list=document.getElementById("incomeList");
+  list.innerHTML="";
 
-data.income.forEach(r=>{
-const sell=parseNum(r.sell);
-const ek=parseNum(r.ek);
-const profit=sell-ek;
-const tax=profit>0?profit*0.4:0;
-const net=profit-tax;
+  data.income.forEach(r=>{
+    const sell=parseNum(r.sell);
+    const ek=parseNum(r.ek);
+    const profit=sell-ek;
+    const tax=profit>0?profit*0.4:0;
+    const net=profit-tax;
 
-list.innerHTML+=`
-<div class="bg-white p-4 rounded-2xl shadow space-y-3">
-<input class="w-full border p-2 rounded-xl"
-value="${r.title}" placeholder="Artikel"
-oninput="updInc('${r.id}','title',this.value)">
-<input type="date" class="w-full border p-2 rounded-xl"
-value="${r.date}"
-onchange="updInc('${r.id}','date',this.value)">
-<input inputmode="decimal" class="w-full border p-2 rounded-xl"
-value="${r.sell}" placeholder="Verkaufspreis"
-oninput="updInc('${r.id}','sell',this.value)">
-<input inputmode="decimal" class="w-full border p-2 rounded-xl"
-value="${r.ek}" placeholder="Einkaufspreis (EK)"
-oninput="updInc('${r.id}','ek',this.value)">
+    list.innerHTML+=`
+    <div class="bg-white p-4 rounded-2xl shadow space-y-3">
+      <input class="w-full border p-2 rounded-xl"
+        value="${r.title}" placeholder="Artikel"
+        oninput="updateIncome('${r.id}','title',this.value)">
+      <input type="date" class="w-full border p-2 rounded-xl"
+        value="${r.date}"
+        onchange="updateIncome('${r.id}','date',this.value)">
+      <input inputmode="decimal" class="w-full border p-2 rounded-xl"
+        value="${r.sell}" placeholder="Verkaufspreis"
+        oninput="updateIncome('${r.id}','sell',this.value)">
+      <input inputmode="decimal" class="w-full border p-2 rounded-xl"
+        value="${r.ek}" placeholder="Einkaufspreis (EK)"
+        oninput="updateIncome('${r.id}','ek',this.value)">
 
-<div class="text-sm space-y-1">
-<div>Gewinn: <strong>${euro(profit)}</strong></div>
-<div>40% Rücklage: <strong>${euro(tax)}</strong></div>
-<div>Netto: <strong>${euro(net)}</strong></div>
-</div>
+      <div class="text-sm space-y-1">
+        <div>Gewinn: <strong>${euro(profit)}</strong></div>
+        <div>40% Rücklage: <strong>${euro(tax)}</strong></div>
+        <div>Netto: <strong>${euro(net)}</strong></div>
+      </div>
 
-<button onclick="delInc('${r.id}')"
-class="w-full bg-red-600 text-white py-2 rounded-xl">
-Löschen
-</button>
-</div>`;
-});
-updateDashboard();
+      <button onclick="deleteIncome('${r.id}')"
+      class="w-full bg-red-600 text-white py-2 rounded-xl">
+      Löschen
+      </button>
+    </div>`;
+  });
+
+  updateDashboard();
 }
 
 function renderExpense(){
-const list=document.getElementById("expenseList");
-list.innerHTML="";
-data.expense.forEach(r=>{
-list.innerHTML+=`
-<div class="bg-white p-4 rounded-2xl shadow space-y-3">
-<input class="w-full border p-2 rounded-xl"
-value="${r.title}" placeholder="Bezeichnung"
-oninput="updExp('${r.id}','title',this.value)">
-<input type="date" class="w-full border p-2 rounded-xl"
-value="${r.date}"
-onchange="updExp('${r.id}','date',this.value)">
-<input inputmode="decimal" class="w-full border p-2 rounded-xl"
-value="${r.amount}" placeholder="Betrag"
-oninput="updExp('${r.id}','amount',this.value)">
-<button onclick="delExp('${r.id}')"
-class="w-full bg-red-600 text-white py-2 rounded-xl">
-Löschen
-</button>
-</div>`;
-});
+  const list=document.getElementById("expenseList");
+  list.innerHTML="";
+
+  data.expense.forEach(r=>{
+    list.innerHTML+=`
+    <div class="bg-white p-4 rounded-2xl shadow space-y-3">
+      <input class="w-full border p-2 rounded-xl"
+        value="${r.title}" placeholder="Bezeichnung"
+        oninput="updateExpense('${r.id}','title',this.value)">
+      <input type="date" class="w-full border p-2 rounded-xl"
+        value="${r.date}"
+        onchange="updateExpense('${r.id}','date',this.value)">
+      <input inputmode="decimal" class="w-full border p-2 rounded-xl"
+        value="${r.amount}" placeholder="Betrag"
+        oninput="updateExpense('${r.id}','amount',this.value)">
+      <button onclick="deleteExpense('${r.id}')"
+      class="w-full bg-red-600 text-white py-2 rounded-xl">
+      Löschen
+      </button>
+    </div>`;
+  });
 }
 
-function updInc(id,f,v){data.income.find(r=>r.id===id)[f]=v;save();updateDashboard();}
-function updExp(id,f,v){data.expense.find(r=>r.id===id)[f]=v;save();updateDashboard();}
-function delInc(id){data.income=data.income.filter(r=>r.id!==id);save();renderIncome();}
-function delExp(id){data.expense=data.expense.filter(r=>r.id!==id);save();renderExpense();}
+function updateIncome(id,field,value){
+  const row=data.income.find(r=>r.id===id);
+  if(row){
+    row[field]=value;
+    save();
+  }
+  updateDashboard();
+}
+
+function updateExpense(id,field,value){
+  const row=data.expense.find(r=>r.id===id);
+  if(row){
+    row[field]=value;
+    save();
+  }
+  updateDashboard();
+}
+
+function deleteIncome(id){
+  data.income=data.income.filter(r=>r.id!==id);
+  save();
+  renderIncome();
+}
+
+function deleteExpense(id){
+  data.expense=data.expense.filter(r=>r.id!==id);
+  save();
+  renderExpense();
+}
 
 function updateDashboard(){
-let totalProfit=0;
-let totalExpense=0;
+  let totalProfit=0;
+  let totalExpense=0;
 
-data.income.forEach(r=>{
-totalProfit+=parseNum(r.sell)-parseNum(r.ek);
-});
+  data.income.forEach(r=>{
+    totalProfit+=parseNum(r.sell)-parseNum(r.ek);
+  });
 
-data.expense.forEach(r=>{
-totalExpense+=parseNum(r.amount);
-});
+  data.expense.forEach(r=>{
+    totalExpense+=parseNum(r.amount);
+  });
 
-totalProfit-=totalExpense;
+  totalProfit-=totalExpense;
 
-const tax=totalProfit>0?totalProfit*0.4:0;
-const net=totalProfit-tax;
-const count=data.income.length;
-const avg=count?totalProfit/count:0;
+  const tax=totalProfit>0?totalProfit*0.4:0;
+  const net=totalProfit-tax;
+  const count=data.income.length;
+  const avg=count?totalProfit/count:0;
 
-document.getElementById("totalProfit").innerText=euro(totalProfit);
-document.getElementById("totalTax").innerText=euro(tax);
-document.getElementById("totalNet").innerText=euro(net);
-document.getElementById("totalCount").innerText=count;
-document.getElementById("avgProfit").innerText=euro(avg);
+  document.getElementById("totalProfit").innerText=euro(totalProfit);
+  document.getElementById("totalTax").innerText=euro(tax);
+  document.getElementById("totalNet").innerText=euro(net);
+  document.getElementById("totalCount").innerText=count;
+  document.getElementById("avgProfit").innerText=euro(avg);
 }
+
+window.addEventListener("beforeunload", save);
 
 renderIncome();
 renderExpense();
