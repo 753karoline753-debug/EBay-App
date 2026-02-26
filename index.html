@@ -9,12 +9,10 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 </head>
-
 <body class="bg-gray-100">
 
-<div class="max-w-md mx-auto mt-10 bg-white p-6 rounded-2xl shadow">
-
-<h1 class="text-2xl font-bold text-center mb-4">Kleingewerbe Pro</h1>
+<div class="max-w-md mx-auto mt-20 bg-white p-6 rounded-2xl shadow">
+<h1 class="text-2xl font-bold text-center mb-6">Kleingewerbe Pro</h1>
 
 <button id="loginBtn"
 class="w-full bg-black text-white py-3 rounded-xl">
@@ -24,21 +22,21 @@ Mit GitHub einloggen
 </div>
 
 <script>
+const { createClient } = supabase
 
-const supabaseUrl = "https://szcgehcjdnilykynqhqf.supabase.co"
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6Y2dlaGNqZG5pbHlreW5xaHFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwOTkwODgsImV4cCI6MjA4NzY3NTA4OH0.46uxkT1a9GhyDqEBlWJBqoIhfsthyLC2dg_nEDMWdJo"
-
-const supabase = supabase.createClient(supabaseUrl, supabaseKey)
+const supabaseClient = createClient(
+  "https://szcgehcjdnilykynqhqf.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6Y2dlaGNqZG5pbHlreW5xaHFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwOTkwODgsImV4cCI6MjA4NzY3NTA4OH0.46uxkT1a9GhyDqEBlWJBqoIhfsthyLC2dg_nEDMWdJo"
+)
 
 document.getElementById("loginBtn").addEventListener("click", async () => {
-  await supabase.auth.signInWithOAuth({
+  await supabaseClient.auth.signInWithOAuth({
     provider: "github",
     options: {
       redirectTo: "https://753karoline753-debug.github.io/EBay-App/"
     }
   })
 })
-
 </script>
 
 </body>
