@@ -1,584 +1,77 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Kleingewerbe Pro</title>
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Supabase (UMD / ohne Module) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 
 <body class="bg-gray-100">
-  <!-- AUTH SCREEN -->
-  <div id="auth" class="max-w-md mx-auto p-4 mt-16">
-    <div class="bg-white rounded-2xl shadow p-5 space-y-3">
-      <h1 class="text-2xl font-bold text-center">Kleingewerbe Pro</h1>
-      <p class="text-sm text-gray-600 text-center">
-        Login für Cloud-Speicherung (Supabase).
-      </p>
 
-      <button id="btnLogin" class="w-full bg-black text-white py-3 rounded-xl">
-        Mit GitHub einloggen
-      </button>
-
-      <div id="authMsg" class="text-xs text-gray-600 text-center"></div>
-
-      <details class="text-xs text-gray-500">
-        <summary class="cursor-pointer">Hilfe bei Login</summary>
-        <div class="mt-2 space-y-2">
-          <div>Wenn Login nicht klappt: In Supabase muss GitHub als Provider aktiv sein + Redirect URL muss stimmen.</div>
-          <div>Weiter unten in dieser Nachricht steht die Checkliste.</div>
-        </div>
-      </details>
-    </div>
+<div id="login" class="max-w-md mx-auto mt-20 p-6">
+  <div class="bg-white p-6 rounded-2xl shadow text-center space-y-4">
+    <h1 class="text-2xl font-bold">Kleingewerbe Pro</h1>
+    <p class="text-gray-600 text-sm">Cloud Login (Supabase)</p>
+    <button id="githubLogin" class="w-full bg-black text-white py-3 rounded-xl">
+      Mit GitHub einloggen
+    </button>
   </div>
+</div>
 
-  <!-- APP -->
-  <div id="app" class="hidden max-w-xl mx-auto p-4 space-y-4">
-    <div class="flex items-center justify-between">
-      <h1 class="text-xl font-bold">Kleingewerbe Pro</h1>
-      <button id="btnLogout" class="text-sm bg-red-600 text-white px-3 py-2 rounded-xl">Logout</button>
-    </div>
-
-    <div class="bg-white rounded-xl shadow p-3 text-sm">
-      <div class="flex items-center justify-between gap-2">
-        <div>
-          Cloud: <span id="cloudStatus" class="font-semibold">…</span><br>
-          <span class="text-xs text-gray-500">User: <span id="userInfo">-</span></span>
-        </div>
-        <div class="flex gap-2">
-          <button id="btnCloudLoad" class="bg-gray-200 px-3 py-2 rounded-xl text-sm">Cloud laden</button>
-          <button id="btnCloudSave" class="bg-gray-200 px-3 py-2 rounded-xl text-sm">Cloud speichern</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tabs -->
-    <div class="flex bg-white rounded-xl shadow overflow-hidden">
-      <button id="tabBtnStock" class="flex-1 py-3" data-tab="stock">Lager</button>
-      <button id="tabBtnSales" class="flex-1 py-3" data-tab="sales">Verkäufe</button>
-      <button id="tabBtnCosts" class="flex-1 py-3" data-tab="costs">Kosten</button>
-      <button id="tabBtnDash"  class="flex-1 py-3" data-tab="dash">Übersicht</button>
-    </div>
-
-    <!-- Content -->
-    <div id="content" class="space-y-4"></div>
+<div id="app" class="hidden max-w-md mx-auto mt-20 p-6">
+  <div class="bg-white p-6 rounded-2xl shadow text-center space-y-4">
+    <h2 class="text-xl font-bold">Eingeloggt ✅</h2>
+    <p id="userEmail" class="text-sm text-gray-600"></p>
+    <button id="logoutBtn" class="bg-red-600 text-white px-4 py-2 rounded-xl">
+      Logout
+    </button>
   </div>
+</div>
 
 <script>
-/* =========================
-   SUPABASE CONFIG
-   ========================= */
 const SUPABASE_URL = "https://szcgehcjdnilykynqhqf.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6Y2dlaGNqZG5pbHlreW5xaHFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwOTkwODgsImV4cCI6MjA4NzY3NTA4OH0.46uxkT1a9GhyDqEBlWJBqoIhfsthyLC2dg_nEDMWdJo";
+const SUPABASE_KEY = "DEIN_ANON_KEY_HIER_EINFÜGEN"; // <-- deinen anon key hier einfügen
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-/* =========================
-   STATE
-   ========================= */
-const LOCAL_KEY = "kleingewerbe_pro_state_v1";
-let state = loadLocal() || {
-  stock: [],    // {id, name, ek, qty}
-  sales: [],    // {id, date, stockId, qty, sell, ebayFee, shipCost, otherCost, note}
-  costs: []     // {id, date, title, amount}
-};
+// Feste Redirect URL (kein window.location mehr!)
+const REDIRECT_URL = "https://753karoline753-debug.github.io/EBay-App/";
 
-function uid() {
-  return (crypto?.randomUUID?.() || (Date.now().toString(36) + Math.random().toString(36).slice(2)));
-}
-function today() {
-  const d = new Date();
-  const p = (x)=>String(x).padStart(2,"0");
-  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
-}
-function euro(n) {
-  return (Number(n||0)).toLocaleString("de-DE", {style:"currency", currency:"EUR"});
-}
-function parseNum(v) {
-  if (v === null || v === undefined) return 0;
-  let s = String(v).trim();
-  if (!s) return 0;
-  s = s.replace(/\s+/g,"");
-  const lc = s.lastIndexOf(",");
-  const ld = s.lastIndexOf(".");
-  if (lc !== -1 && ld !== -1) {
-    if (lc > ld) s = s.replace(/\./g,"").replace(",",".");
-    else s = s.replace(/,/g,"");
-  } else {
-    s = s.replace(/\./g,"").replace(",",".");
-  }
-  const n = parseFloat(s);
-  return Number.isFinite(n) ? n : 0;
-}
-function esc(s) {
-  return String(s ?? "")
-    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-}
-
-/* =========================
-   LOCAL SAVE
-   ========================= */
-function saveLocal() {
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(state));
-}
-function loadLocal() {
-  try { return JSON.parse(localStorage.getItem(LOCAL_KEY)); } catch { return null; }
-}
-
-/* =========================
-   CLOUD (Supabase Table: app_data)
-   - columns: user_id (uuid PK), payload (jsonb)
-   ========================= */
-let currentUser = null;
-let saveTimer = null;
-
-function setCloudStatus(txt) {
-  document.getElementById("cloudStatus").textContent = txt;
-}
-function setUserInfo(txt) {
-  document.getElementById("userInfo").textContent = txt;
-}
-
-async function cloudSave() {
-  if (!currentUser) return;
-  setCloudStatus("speichert…");
-  const { error } = await supabase
-    .from("app_data")
-    .upsert({ user_id: currentUser.id, payload: state }, { onConflict: "user_id" });
-  if (error) {
-    console.log(error);
-    setCloudStatus("Fehler beim Speichern");
-    alert("Cloud Speichern Fehler: " + error.message);
-    return;
-  }
-  setCloudStatus("gespeichert ✓");
-}
-
-async function cloudLoad() {
-  if (!currentUser) return;
-  setCloudStatus("lädt…");
-  const { data, error } = await supabase
-    .from("app_data")
-    .select("payload")
-    .eq("user_id", currentUser.id)
-    .single();
-
-  if (error && error.code !== "PGRST116") { // PGRST116 = no rows
-    console.log(error);
-    setCloudStatus("Fehler beim Laden");
-    alert("Cloud Laden Fehler: " + error.message);
-    return;
-  }
-
-  if (data && data.payload) {
-    state = normalizeState(data.payload);
-    saveLocal();
-    render(activeTab);
-    setCloudStatus("geladen ✓");
-  } else {
-    // Noch nichts in Cloud
-    setCloudStatus("leer (noch nichts gespeichert)");
-  }
-}
-
-function cloudSaveDebounced() {
-  saveLocal();
-  if (!currentUser) return; // offline ok
-  if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(()=>cloudSave(), 700);
-}
-
-function normalizeState(s) {
-  return {
-    stock: Array.isArray(s.stock) ? s.stock : [],
-    sales: Array.isArray(s.sales) ? s.sales : [],
-    costs: Array.isArray(s.costs) ? s.costs : []
-  };
-}
-
-/* =========================
-   AUTH
-   ========================= */
-const authBox = document.getElementById("auth");
-const appBox = document.getElementById("app");
-const authMsg = document.getElementById("authMsg");
-
-document.getElementById("btnLogin").addEventListener("click", async ()=>{
-  authMsg.textContent = "Weiterleitung zu GitHub…";
-  const redirectTo = window.location.href; // GitHub Pages URL
+document.getElementById("githubLogin").addEventListener("click", async () => {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "github",
-    options: { redirectTo }
+    options: {
+      redirectTo: REDIRECT_URL
+    }
   });
+
   if (error) {
-    authMsg.textContent = "Login Fehler: " + error.message;
+    alert("Login Fehler: " + error.message);
   }
 });
 
-document.getElementById("btnLogout").addEventListener("click", async ()=>{
+document.getElementById("logoutBtn").addEventListener("click", async () => {
   await supabase.auth.signOut();
   location.reload();
 });
 
-document.getElementById("btnCloudLoad").addEventListener("click", cloudLoad);
-document.getElementById("btnCloudSave").addEventListener("click", cloudSave);
-
-supabase.auth.onAuthStateChange(async (_event, session)=>{
-  currentUser = session?.user || null;
-  if (currentUser) {
-    authBox.classList.add("hidden");
-    appBox.classList.remove("hidden");
-    setUserInfo(currentUser.email || currentUser.id);
-    setCloudStatus("verbunden ✓");
-    // Erst Cloud laden (falls vorhanden), sonst local lassen:
-    await cloudLoad();
-    render(activeTab);
-  } else {
-    authBox.classList.remove("hidden");
-    appBox.classList.add("hidden");
-  }
-});
-
-// Initial session check
-(async ()=>{
+// Session prüfen
+async function checkUser() {
   const { data } = await supabase.auth.getSession();
-  currentUser = data?.session?.user || null;
-  if (currentUser) {
-    authBox.classList.add("hidden");
-    appBox.classList.remove("hidden");
-    setUserInfo(currentUser.email || currentUser.id);
-    setCloudStatus("verbunden ✓");
-    await cloudLoad();
-    render(activeTab);
-  } else {
-    setCloudStatus("nicht eingeloggt");
+  const session = data.session;
+
+  if (session) {
+    document.getElementById("login").classList.add("hidden");
+    document.getElementById("app").classList.remove("hidden");
+    document.getElementById("userEmail").textContent =
+      session.user.email || session.user.id;
   }
-})();
-
-/* =========================
-   UI Tabs
-   ========================= */
-let activeTab = "stock";
-const tabButtons = [
-  "tabBtnStock","tabBtnSales","tabBtnCosts","tabBtnDash"
-].map(id=>document.getElementById(id));
-
-tabButtons.forEach(btn=>{
-  btn.addEventListener("click", ()=>{
-    activeTab = btn.getAttribute("data-tab");
-    render(activeTab);
-  });
-});
-
-function setActiveTabUI() {
-  const map = {stock:"tabBtnStock", sales:"tabBtnSales", costs:"tabBtnCosts", dash:"tabBtnDash"};
-  tabButtons.forEach(b=>b.classList.remove("bg-black","text-white"));
-  document.getElementById(map[activeTab]).classList.add("bg-black","text-white");
 }
 
-/* =========================
-   BUSINESS LOGIC
-   ========================= */
-function saleProfit(s) {
-  const qty = Math.max(0, parseNum(s.qty));
-  const sell = parseNum(s.sell);
-  const ebayFee = parseNum(s.ebayFee);
-  const shipCost = parseNum(s.shipCost);
-  const otherCost = parseNum(s.otherCost);
-
-  const item = state.stock.find(x=>x.id===s.stockId);
-  const ek = item ? parseNum(item.ek) : parseNum(s.ekFallback || 0);
-
-  return sell - (ek * qty) - ebayFee - shipCost - otherCost;
-}
-
-function totalProfitBeforeTax() {
-  const salesProfit = state.sales.reduce((sum,s)=>sum + saleProfit(s), 0);
-  const extraCosts = state.costs.reduce((sum,c)=>sum + parseNum(c.amount), 0);
-  return salesProfit - extraCosts;
-}
-
-function stockValue() {
-  return state.stock.reduce((sum,it)=>sum + (parseNum(it.ek) * Math.max(0, parseNum(it.qty))), 0);
-}
-
-/* =========================
-   RENDER
-   ========================= */
-const content = document.getElementById("content");
-
-function render(tab) {
-  setActiveTabUI();
-
-  if (tab === "stock") return renderStock();
-  if (tab === "sales") return renderSales();
-  if (tab === "costs") return renderCosts();
-  if (tab === "dash")  return renderDash();
-}
-
-function renderStock() {
-  content.innerHTML = `
-    <button class="w-full bg-black text-white py-3 rounded-xl" id="addStockBtn">+ Lagerartikel</button>
-    <div class="space-y-4" id="stockList"></div>
-  `;
-
-  document.getElementById("addStockBtn").onclick = ()=>{
-    state.stock.unshift({ id: uid(), name:"", ek:"", qty:"1" });
-    cloudSaveDebounced();
-    render("stock");
-  };
-
-  const list = document.getElementById("stockList");
-  list.innerHTML = state.stock.map(it=>{
-    return `
-      <div class="bg-white p-4 rounded-2xl shadow space-y-3">
-        <div class="text-sm font-semibold">Lagerartikel</div>
-
-        <input class="w-full border p-2 rounded-xl" placeholder="Artikelname"
-          value="${esc(it.name)}" data-id="${it.id}" data-field="name">
-
-        <div class="grid grid-cols-2 gap-2">
-          <input inputmode="decimal" class="w-full border p-2 rounded-xl" placeholder="EK pro Stück"
-            value="${esc(it.ek)}" data-id="${it.id}" data-field="ek">
-
-          <input inputmode="numeric" class="w-full border p-2 rounded-xl" placeholder="Bestand"
-            value="${esc(it.qty)}" data-id="${it.id}" data-field="qty">
-        </div>
-
-        <button class="w-full bg-red-600 text-white py-2 rounded-xl" data-del="${it.id}">Löschen</button>
-      </div>
-    `;
-  }).join("");
-
-  // bind inputs
-  list.querySelectorAll("input").forEach(inp=>{
-    inp.addEventListener("input", (e)=>{
-      const id = inp.getAttribute("data-id");
-      const field = inp.getAttribute("data-field");
-      const it = state.stock.find(x=>x.id===id);
-      if (!it) return;
-      it[field] = inp.value;
-      cloudSaveDebounced();
-      // Sales Dropdown braucht evtl. neue Namen
-      // nicht jedes Mal komplett rerendern -> nur local save reicht
-    });
-  });
-  // delete
-  list.querySelectorAll("button[data-del]").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      const id = btn.getAttribute("data-del");
-      state.stock = state.stock.filter(x=>x.id!==id);
-      cloudSaveDebounced();
-      render("stock");
-    });
-  });
-}
-
-function stockOptions(selectedId) {
-  const opts = [`<option value="">Artikel wählen…</option>`];
-  state.stock.forEach(it=>{
-    const label = `${it.name || "(ohne Name)"} (Bestand: ${Math.max(0, parseNum(it.qty))})`;
-    opts.push(`<option value="${it.id}" ${it.id===selectedId?"selected":""}>${esc(label)}</option>`);
-  });
-  return opts.join("");
-}
-
-function renderSales() {
-  content.innerHTML = `
-    <button class="w-full bg-black text-white py-3 rounded-xl" id="addSaleBtn">+ Verkauf</button>
-    <div class="space-y-4" id="salesList"></div>
-    <div class="text-xs text-gray-500">
-      Tipp: Lager-Bestand wird nicht automatisch reduziert (kann ich als nächstes einbauen).
-    </div>
-  `;
-
-  document.getElementById("addSaleBtn").onclick = ()=>{
-    state.sales.unshift({
-      id: uid(),
-      date: today(),
-      stockId: "",
-      qty: "1",
-      sell: "",
-      ebayFee: "",
-      shipCost: "",
-      otherCost: "",
-      note: ""
-    });
-    cloudSaveDebounced();
-    render("sales");
-  };
-
-  const list = document.getElementById("salesList");
-  list.innerHTML = state.sales.map(s=>{
-    const profit = saleProfit(s);
-    const tax = profit > 0 ? profit * 0.4 : 0;
-    const net = profit - tax;
-    const item = state.stock.find(x=>x.id===s.stockId);
-
-    return `
-      <div class="bg-white p-4 rounded-2xl shadow space-y-3">
-        <div class="flex items-center justify-between">
-          <div class="text-sm font-semibold">Verkauf</div>
-          <button class="text-xs bg-red-600 text-white px-3 py-2 rounded-xl" data-del="${s.id}">Löschen</button>
-        </div>
-
-        <input type="date" class="w-full border p-2 rounded-xl"
-          value="${esc(s.date)}" data-id="${s.id}" data-field="date">
-
-        <select class="w-full border p-2 rounded-xl" data-id="${s.id}" data-field="stockId">
-          ${stockOptions(s.stockId)}
-        </select>
-
-        <div class="grid grid-cols-2 gap-2">
-          <input inputmode="numeric" class="w-full border p-2 rounded-xl" placeholder="Menge"
-            value="${esc(s.qty)}" data-id="${s.id}" data-field="qty">
-
-          <input inputmode="decimal" class="w-full border p-2 rounded-xl" placeholder="Verkaufspreis (gesamt)"
-            value="${esc(s.sell)}" data-id="${s.id}" data-field="sell">
-
-          <input inputmode="decimal" class="w-full border p-2 rounded-xl" placeholder="eBay Gebühren"
-            value="${esc(s.ebayFee)}" data-id="${s.id}" data-field="ebayFee">
-
-          <input inputmode="decimal" class="w-full border p-2 rounded-xl" placeholder="Versandkosten"
-            value="${esc(s.shipCost)}" data-id="${s.id}" data-field="shipCost">
-
-          <input inputmode="decimal" class="w-full border p-2 rounded-xl col-span-2" placeholder="Sonstige Kosten (pro Verkauf)"
-            value="${esc(s.otherCost)}" data-id="${s.id}" data-field="otherCost">
-        </div>
-
-        <input class="w-full border p-2 rounded-xl" placeholder="Notiz (optional)"
-          value="${esc(s.note)}" data-id="${s.id}" data-field="note">
-
-        <div class="text-sm space-y-1">
-          <div>Artikel: <b>${esc(item?.name || "-")}</b></div>
-          <div>Gewinn: <b>${euro(profit)}</b></div>
-          <div>40% Rücklage: <b>${euro(tax)}</b></div>
-          <div>Netto (Anzeige): <b>${euro(net)}</b></div>
-        </div>
-      </div>
-    `;
-  }).join("");
-
-  // bind inputs/selects
-  list.querySelectorAll("input, select").forEach(el=>{
-    el.addEventListener(el.tagName === "SELECT" ? "change" : "input", ()=>{
-      const id = el.getAttribute("data-id");
-      const field = el.getAttribute("data-field");
-      const s = state.sales.find(x=>x.id===id);
-      if (!s) return;
-      s[field] = el.value;
-      cloudSaveDebounced();
-      // Für live Gewinnanzeige: rerender Sales nur (ok auf iPhone)
-      render("sales");
-    });
-  });
-
-  // delete
-  list.querySelectorAll("button[data-del]").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      const id = btn.getAttribute("data-del");
-      state.sales = state.sales.filter(x=>x.id!==id);
-      cloudSaveDebounced();
-      render("sales");
-    });
-  });
-}
-
-function renderCosts() {
-  content.innerHTML = `
-    <button class="w-full bg-black text-white py-3 rounded-xl" id="addCostBtn">+ Kosten</button>
-    <div class="space-y-4" id="costList"></div>
-  `;
-
-  document.getElementById("addCostBtn").onclick = ()=>{
-    state.costs.unshift({ id: uid(), date: today(), title:"", amount:"" });
-    cloudSaveDebounced();
-    render("costs");
-  };
-
-  const list = document.getElementById("costList");
-  list.innerHTML = state.costs.map(c=>{
-    return `
-      <div class="bg-white p-4 rounded-2xl shadow space-y-3">
-        <div class="flex items-center justify-between">
-          <div class="text-sm font-semibold">Kosten</div>
-          <button class="text-xs bg-red-600 text-white px-3 py-2 rounded-xl" data-del="${c.id}">Löschen</button>
-        </div>
-
-        <input type="date" class="w-full border p-2 rounded-xl"
-          value="${esc(c.date)}" data-id="${c.id}" data-field="date">
-
-        <input class="w-full border p-2 rounded-xl" placeholder="Beschreibung"
-          value="${esc(c.title)}" data-id="${c.id}" data-field="title">
-
-        <input inputmode="decimal" class="w-full border p-2 rounded-xl" placeholder="Betrag (€)"
-          value="${esc(c.amount)}" data-id="${c.id}" data-field="amount">
-      </div>
-    `;
-  }).join("");
-
-  list.querySelectorAll("input").forEach(inp=>{
-    inp.addEventListener("input", ()=>{
-      const id = inp.getAttribute("data-id");
-      const field = inp.getAttribute("data-field");
-      const c = state.costs.find(x=>x.id===id);
-      if (!c) return;
-      c[field] = inp.value;
-      cloudSaveDebounced();
-      // keine harten rerenders nötig
-    });
-  });
-
-  list.querySelectorAll("button[data-del]").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      const id = btn.getAttribute("data-del");
-      state.costs = state.costs.filter(x=>x.id!==id);
-      cloudSaveDebounced();
-      render("costs");
-    });
-  });
-}
-
-function renderDash() {
-  const profit = totalProfitBeforeTax();
-  const tax = profit > 0 ? profit * 0.4 : 0;
-  const net = profit - tax;
-  const stockVal = stockValue();
-
-  content.innerHTML = `
-    <div class="bg-white p-4 rounded-2xl shadow space-y-2">
-      <div class="text-gray-500">Gewinn (nach Gebühren/Versand/Sonstiges + Kosten)</div>
-      <div class="text-2xl font-bold">${euro(profit)}</div>
-    </div>
-
-    <div class="bg-yellow-100 p-4 rounded-2xl shadow space-y-1">
-      <div class="text-gray-600">40% Steuer-Rücklage (Anzeige)</div>
-      <div class="text-xl font-bold">${euro(tax)}</div>
-    </div>
-
-    <div class="bg-green-100 p-4 rounded-2xl shadow space-y-1">
-      <div class="text-gray-600">Netto nach Rücklage (Anzeige)</div>
-      <div class="text-2xl font-bold">${euro(net)}</div>
-    </div>
-
-    <div class="bg-white p-4 rounded-2xl shadow space-y-1">
-      <div class="text-gray-600">Lagerwert (EK * Bestand)</div>
-      <div class="text-xl font-bold">${euro(stockVal)}</div>
-    </div>
-
-    <div class="text-xs text-gray-500">
-      Hinweis: Die 40% sind eine Spar-Rücklage (keine echte Steuerberechnung).
-    </div>
-  `;
-}
-
-/* Start */
-render(activeTab);
-setCloudStatus("nicht eingeloggt");
+checkUser();
 </script>
+
 </body>
 </html>
