@@ -3,22 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kleingewerbe Pro</title>
+<title>Business App</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body class="bg-gray-100">
 
-<div id="app" class="max-w-xl mx-auto p-4 space-y-4">
+<div class="max-w-xl mx-auto p-4 space-y-4">
 
-<h1 class="text-2xl font-bold text-center">Business Manager Pro</h1>
+<h1 class="text-2xl font-bold text-center">Business Manager</h1>
 
 <div class="flex bg-white rounded-xl shadow overflow-hidden">
-<button onclick="tab('lager')" class="flex-1 py-3">Lager</button>
-<button onclick="tab('verkauf')" class="flex-1 py-3">Verkäufe</button>
-<button onclick="tab('kosten')" class="flex-1 py-3">Kosten</button>
-<button onclick="tab('uebersicht')" class="flex-1 py-3">Übersicht</button>
+<button onclick="showTab('lager')" class="flex-1 py-3">Lager</button>
+<button onclick="showTab('verkauf')" class="flex-1 py-3">Verkäufe</button>
+<button onclick="showTab('kosten')" class="flex-1 py-3">Kosten</button>
+<button onclick="showTab('uebersicht')" class="flex-1 py-3">Übersicht</button>
 </div>
 
 <div id="content"></div>
@@ -26,43 +25,36 @@
 </div>
 
 <script>
-const SUPABASE_URL = "https://szcgehcjdnilykynqhqf.supabase.co";
-const SUPABASE_KEY = "DEIN_ANON_KEY_HIER_EINFÜGEN";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
 let state = {
 lager: [],
 verkaeufe: [],
 kosten: []
 };
 
-function saveLocal(){
-localStorage.setItem("proApp", JSON.stringify(state));
+function save(){
+localStorage.setItem("businessApp", JSON.stringify(state));
 }
 
-function loadLocal(){
-const data = localStorage.getItem("proApp");
-if(data) state = JSON.parse(data);
+function load(){
+const d = localStorage.getItem("businessApp");
+if(d) state = JSON.parse(d);
 }
 
 function euro(x){
 return Number(x||0).toLocaleString("de-DE",{style:"currency",currency:"EUR"});
 }
 
-function tab(name){
-render(name);
-}
-
-function render(name){
+function showTab(name){
 const c = document.getElementById("content");
+
 if(name==="lager"){
 c.innerHTML = `
 <button onclick="addLager()" class="w-full bg-black text-white py-2 rounded-xl mb-3">+ Artikel</button>
 ${state.lager.map((a,i)=>`
-<div class="bg-white p-3 rounded-xl mb-3 shadow">
-<input placeholder="Name" value="${a.name}" oninput="state.lager[${i}].name=this.value;saveLocal()">
-<input placeholder="EK" type="number" value="${a.ek}" oninput="state.lager[${i}].ek=this.value;saveLocal()">
-<input placeholder="Menge" type="number" value="${a.menge}" oninput="state.lager[${i}].menge=this.value;saveLocal()">
+<div class="bg-white p-3 rounded-xl mb-3 shadow space-y-2">
+<input placeholder="Name" value="${a.name}" oninput="state.lager[${i}].name=this.value;save()">
+<input placeholder="EK" type="number" value="${a.ek}" oninput="state.lager[${i}].ek=this.value;save()">
+<input placeholder="Menge" type="number" value="${a.menge}" oninput="state.lager[${i}].menge=this.value;save()">
 </div>`).join("")}
 `;
 }
@@ -72,39 +64,40 @@ c.innerHTML = `
 <button onclick="addVerkauf()" class="w-full bg-black text-white py-2 rounded-xl mb-3">+ Verkauf</button>
 ${state.verkaeufe.map((v,i)=>`
 <div class="bg-white p-3 rounded-xl mb-3 shadow space-y-2">
-<select onchange="state.verkaeufe[${i}].artikel=this.value;saveLocal()">
+<select onchange="state.verkaeufe[${i}].artikel=this.value;save()">
+<option value="">Artikel wählen</option>
 ${state.lager.map(l=>`<option ${v.artikel===l.name?"selected":""}>${l.name}</option>`)}
 </select>
-<input placeholder="Verkaufspreis" type="number" value="${v.preis}" oninput="state.verkaeufe[${i}].preis=this.value;saveLocal()">
-<input placeholder="eBay Gebühren" type="number" value="${v.gebuehr}" oninput="state.verkaeufe[${i}].gebuehr=this.value;saveLocal()">
-<input placeholder="Versandkosten" type="number" value="${v.versand}" oninput="state.verkaeufe[${i}].versand=this.value;saveLocal()">
-<div class="text-sm font-bold">Gewinn: ${euro(calcGewinn(v))}</div>
+<input placeholder="Verkaufspreis" type="number" value="${v.preis}" oninput="state.verkaeufe[${i}].preis=this.value;save()">
+<input placeholder="eBay Gebühren" type="number" value="${v.gebuehr}" oninput="state.verkaeufe[${i}].gebuehr=this.value;save()">
+<input placeholder="Versandkosten" type="number" value="${v.versand}" oninput="state.verkaeufe[${i}].versand=this.value;save()">
+<div class="font-bold">Gewinn: ${euro(calcGewinn(v))}</div>
 </div>`).join("")}
 `;
 }
 
 if(name==="kosten"){
 c.innerHTML = `
-<button onclick="addKosten()" class="w-full bg-black text-white py-2 rounded-xl mb-3">+ Sonstige Kosten</button>
+<button onclick="addKosten()" class="w-full bg-black text-white py-2 rounded-xl mb-3">+ Kosten</button>
 ${state.kosten.map((k,i)=>`
-<div class="bg-white p-3 rounded-xl mb-3 shadow">
-<input placeholder="Beschreibung" value="${k.text}" oninput="state.kosten[${i}].text=this.value;saveLocal()">
-<input placeholder="Betrag" type="number" value="${k.betrag}" oninput="state.kosten[${i}].betrag=this.value;saveLocal()">
+<div class="bg-white p-3 rounded-xl mb-3 shadow space-y-2">
+<input placeholder="Beschreibung" value="${k.text}" oninput="state.kosten[${i}].text=this.value;save()">
+<input placeholder="Betrag" type="number" value="${k.betrag}" oninput="state.kosten[${i}].betrag=this.value;save()">
 </div>`).join("")}
 `;
 }
 
 if(name==="uebersicht"){
-const gesGewinn = state.verkaeufe.reduce((sum,v)=>sum+calcGewinn(v),0);
-const sonstKosten = state.kosten.reduce((s,k)=>s+Number(k.betrag||0),0);
-const netto = gesGewinn - sonstKosten;
+const gewinn = state.verkaeufe.reduce((s,v)=>s+calcGewinn(v),0);
+const kosten = state.kosten.reduce((s,k)=>s+Number(k.betrag||0),0);
+const netto = gewinn - kosten;
 const steuer = netto*0.4;
 
 c.innerHTML = `
-<div class="bg-white p-4 rounded-xl shadow">
-<div>Gesamt Gewinn Verkäufe: <b>${euro(gesGewinn)}</b></div>
-<div>Sonstige Kosten: <b>${euro(sonstKosten)}</b></div>
-<div class="text-lg mt-2">Netto Gewinn: <b>${euro(netto)}</b></div>
+<div class="bg-white p-4 rounded-xl shadow space-y-2">
+<div>Gewinn Verkäufe: <b>${euro(gewinn)}</b></div>
+<div>Sonstige Kosten: <b>${euro(kosten)}</b></div>
+<div class="text-lg">Netto: <b>${euro(netto)}</b></div>
 <div class="text-red-600">40% Rücklage: <b>${euro(steuer)}</b></div>
 <div class="text-green-600">Verfügbar: <b>${euro(netto-steuer)}</b></div>
 </div>
@@ -120,24 +113,24 @@ return Number(v.preis||0) - ek - Number(v.gebuehr||0) - Number(v.versand||0);
 
 function addLager(){
 state.lager.push({name:"",ek:0,menge:0});
-saveLocal();
-render("lager");
+save();
+showTab("lager");
 }
 
 function addVerkauf(){
 state.verkaeufe.push({artikel:"",preis:0,gebuehr:0,versand:0});
-saveLocal();
-render("verkauf");
+save();
+showTab("verkauf");
 }
 
 function addKosten(){
 state.kosten.push({text:"",betrag:0});
-saveLocal();
-render("kosten");
+save();
+showTab("kosten");
 }
 
-loadLocal();
-tab("lager");
+load();
+showTab("lager");
 </script>
 
 </body>
