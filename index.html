@@ -4,90 +4,41 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kleingewerbe Pro</title>
+
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 </head>
 
 <body class="bg-gray-100">
 
-<div id="auth" class="max-w-md mx-auto mt-20 p-6">
-  <div class="bg-white p-6 rounded-2xl shadow space-y-3">
-    <h1 class="text-2xl font-bold text-center">Kleingewerbe Pro</h1>
+<div class="max-w-md mx-auto mt-10 bg-white p-6 rounded-2xl shadow">
 
-    <input id="email" type="email" placeholder="E-Mail"
-      class="w-full border p-3 rounded-xl">
+<h1 class="text-2xl font-bold text-center mb-4">Kleingewerbe Pro</h1>
 
-    <input id="password" type="password" placeholder="Passwort"
-      class="w-full border p-3 rounded-xl">
+<button id="loginBtn"
+class="w-full bg-black text-white py-3 rounded-xl">
+Mit GitHub einloggen
+</button>
 
-    <button id="loginBtn"
-      class="w-full bg-black text-white py-3 rounded-xl">
-      Einloggen
-    </button>
-
-    <button id="registerBtn"
-      class="w-full bg-gray-300 py-3 rounded-xl">
-      Registrieren
-    </button>
-
-    <div id="msg" class="text-sm text-red-600 text-center"></div>
-  </div>
-</div>
-
-<div id="app" class="hidden max-w-md mx-auto mt-20 p-6">
-  <div class="bg-white p-6 rounded-2xl shadow text-center space-y-4">
-    <h2 class="text-xl font-bold">Eingeloggt ✅</h2>
-    <button id="logoutBtn"
-      class="bg-red-600 text-white px-4 py-2 rounded-xl">
-      Logout
-    </button>
-  </div>
 </div>
 
 <script>
-const supabase = window.supabase.createClient(
-  "https://szcgehcjdnilykynqhqf.supabase.co",
-  "DEIN_ANON_KEY_HIER"
-);
 
-const emailInput = document.getElementById("email");
-const passwordInput = document.getElementById("password");
-const msg = document.getElementById("msg");
+const supabaseUrl = "https://szcgehcjdnilykynqhqf.supabase.co"
+const supabaseKey = "DEIN_ANON_KEY_HIER_EINFÜGEN"
 
-document.getElementById("registerBtn").onclick = async () => {
-  const { error } = await supabase.auth.signUp({
-    email: emailInput.value,
-    password: passwordInput.value
-  });
+const supabase = supabase.createClient(supabaseUrl, supabaseKey)
 
-  if (error) msg.textContent = error.message;
-  else msg.textContent = "Registrierung erfolgreich!";
-};
+document.getElementById("loginBtn").addEventListener("click", async () => {
+  await supabase.auth.signInWithOAuth({
+    provider: "github",
+    options: {
+      redirectTo: "https://753karoline753-debug.github.io/EBay-App/"
+    }
+  })
+})
 
-document.getElementById("loginBtn").onclick = async () => {
-  const { error } = await supabase.auth.signInWithPassword({
-    email: emailInput.value,
-    password: passwordInput.value
-  });
-
-  if (error) msg.textContent = error.message;
-  else location.reload();
-};
-
-document.getElementById("logoutBtn").onclick = async () => {
-  await supabase.auth.signOut();
-  location.reload();
-};
-
-async function checkUser() {
-  const { data } = await supabase.auth.getSession();
-  if (data.session) {
-    document.getElementById("auth").classList.add("hidden");
-    document.getElementById("app").classList.remove("hidden");
-  }
-}
-
-checkUser();
 </script>
 
 </body>
