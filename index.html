@@ -15,18 +15,11 @@
 
 <h1 class="text-2xl font-bold mb-6">Kleingewerbe Pro</h1>
 
-<div id="loginArea">
-<button id="loginBtn" class="w-full bg-black text-white py-3 rounded-xl">
+<button id="loginBtn" class="w-full bg-black text-white py-3 rounded-xl mb-4">
 Mit GitHub einloggen
 </button>
-</div>
 
-<div id="userArea" class="hidden">
-<p id="userEmail" class="mb-4 font-medium"></p>
-<button id="logoutBtn" class="w-full bg-red-500 text-white py-3 rounded-xl">
-Logout
-</button>
-</div>
+<div id="status" class="text-sm text-gray-600"></div>
 
 </div>
 
@@ -35,38 +28,37 @@ const { createClient } = supabase
 
 const supabaseClient = createClient(
   "https://szcgehcjdnilykynqhqf.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6Y2dlaGNqZG5pbHlreW5xaHFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwOTkwODgsImV4cCI6MjA4NzY3NTA4OH0.46uxkT1a9GhyDqEBlWJBqoIhfsthyLC2dg_nEDMWdJo"
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6Y2dlaGNqZG5pbHlreW5xaHFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwOTkwODgsImV4cCI6MjA4NzY3NTA4OH0.46uxkT1a9GhyDqEBlWJBqoIhfsthyLC2dg_nEDMWdJo",
+  {
+    auth: {
+      persistSession: true,
+      detectSessionInUrl: true
+    }
+  }
 )
 
-// Login
 document.getElementById("loginBtn").addEventListener("click", async () => {
   await supabaseClient.auth.signInWithOAuth({
     provider: "github",
     options: {
-      redirectTo: "https://753karoline753-debug.github.io/EBay-App/"
+      redirectTo: window.location.origin + window.location.pathname
     }
   })
 })
 
-// Prüfen ob User eingeloggt ist
 async function checkUser() {
-  const { data } = await supabaseClient.auth.getUser()
+  const { data } = await supabaseClient.auth.getSession()
 
-  if (data.user) {
-    document.getElementById("loginArea").classList.add("hidden")
-    document.getElementById("userArea").classList.remove("hidden")
-    document.getElementById("userEmail").innerText =
-      "Eingeloggt als: " + data.user.email
+  if (data.session) {
+    document.getElementById("status").innerText =
+      "✅ Eingeloggt als: " + data.session.user.email
+  } else {
+    document.getElementById("status").innerText =
+      "❌ Nicht eingeloggt"
   }
 }
 
 checkUser()
-
-// Logout
-document.getElementById("logoutBtn").addEventListener("click", async () => {
-  await supabaseClient.auth.signOut()
-  location.reload()
-})
 </script>
 
 </body>
