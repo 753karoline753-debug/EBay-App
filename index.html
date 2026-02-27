@@ -7,10 +7,9 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
-<body style="font-family: Arial; text-align:center; padding-top:80px; background:#f3f4f6;">
-
-  <div style="background:#fff; width:320px; margin:0 auto; padding:28px; border-radius:18px; box-shadow:0 10px 30px rgba(0,0,0,.08);">
-    <h1>Kleingewerbe Pro</h1>
+<body style="font-family: Arial; text-align:center; padding-top:90px; background:#f3f4f6;">
+  <div style="background:#fff; width:340px; margin:0 auto; padding:28px; border-radius:18px; box-shadow:0 10px 30px rgba(0,0,0,.08);">
+    <h1 style="margin:0 0 18px 0;">Kleingewerbe Pro</h1>
 
     <button id="loginBtn" style="padding:14px 18px; font-size:16px; width:100%; border:none; border-radius:12px; background:#111; color:#fff;">
       Mit GitHub einloggen
@@ -23,57 +22,67 @@
     <p id="status" style="margin-top:16px;">⏳ Prüfe Login…</p>
   </div>
 
-<script>
-const supabase = window.supabase.createClient(
-  "https://szcgehcjdnilykynqhqf.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6Y2dlaGNqZG5pbHlreW5xaHFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwOTkwODgsImV4cCI6MjA4NzY3NTA4OH0.46uxkT1a9GhyDqEBlWJBqoIhfsthyLC2dg_nEDMWdJo",
-  {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-      storage: window.localStorage
+  <script>
+    const supabase = window.supabase.createClient(
+      "https://szcgehcjdnilykynqhqf.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6Y2dlaGNqZG5pbHlreW5xaHFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwOTkwODgsImV4cCI6MjA4NzY3NTA4OH0.46uxkT1a9GhyDqEBlWJBqoIhfsthyLC2dg_nEDMWdJo",
+      {
+        auth: {
+          // ✅ wichtig für iPhone Safari
+          flowType: "pkce",
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true
+        }
+      }
+    );
+
+    const statusEl = document.getElementById("status");
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    function baseRedirectUrl() {
+      // ohne ?v=… usw. (sonst zickt Safari manchmal)
+      return window.location.origin + window.location.pathname;
     }
-  }
-);
 
-const statusEl = document.getElementById("status");
-const loginBtn = document.getElementById("loginBtn");
-const logoutBtn = document.getElementById("logoutBtn");
+    loginBtn.addEventListener("click", async () => {
+      statusEl.textContent = "⏳ Öffne GitHub Login…";
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "github",
+        options: { redirectTo: baseRedirectUrl() }
+      });
+      if (error) statusEl.textContent = "❌ Login Fehler: " + error.message;
+    });
 
-loginBtn.onclick = async () => {
-  await supabase.auth.signInWithOAuth({
-    provider: "github",
-    options: {
-      redirectTo: window.location.href
+    logoutBtn.addEventListener("click", async () => {
+      await supabase.auth.signOut();
+      location.href = baseRedirectUrl() + "?v=" + Date.now();
+    });
+
+    async function updateUI() {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) {
+        statusEl.textContent = "❌ Session Fehler: " + error.message;
+        return;
+      }
+
+      if (data.session?.user) {
+        const email = data.session.user.email || "(keine Email von GitHub)";
+        statusEl.innerHTML = "✅ Eingeloggt<br><small>" + email + "</small>";
+        loginBtn.style.display = "none";
+        logoutBtn.style.display = "block";
+      } else {
+        statusEl.textContent = "❌ Nicht eingeloggt";
+        loginBtn.style.display = "block";
+        logoutBtn.style.display = "none";
+      }
     }
-  });
-};
 
-logoutBtn.onclick = async () => {
-  await supabase.auth.signOut();
-  location.reload();
-};
+    // ✅ wenn OAuth zurückkommt, wird das hier getriggert
+    supabase.auth.onAuthStateChange(() => updateUI());
 
-async function checkUser() {
-  const { data } = await supabase.auth.getUser();
-  if (data.user) {
-    statusEl.innerHTML = "✅ Eingeloggt als:<br>" + data.user.email;
-    loginBtn.style.display = "none";
-    logoutBtn.style.display = "block";
-  } else {
-    statusEl.innerHTML = "❌ Nicht eingeloggt";
-    loginBtn.style.display = "block";
-    logoutBtn.style.display = "none";
-  }
-}
-
-supabase.auth.onAuthStateChange(() => {
-  checkUser();
-});
-
-checkUser();
-</script>
-
+    updateUI();
+  </script>
 </body>
 </html>
