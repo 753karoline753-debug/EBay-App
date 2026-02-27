@@ -1,65 +1,42 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kleingewerbe Pro</title>
-
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kleingewerbe Pro</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
+<body style="font-family: Arial; text-align:center; padding-top:100px;">
 
-<body class="bg-gray-100">
+  <h1>Kleingewerbe Pro</h1>
 
-<div class="max-w-md mx-auto mt-20 bg-white p-6 rounded-2xl shadow text-center">
+  <button onclick="login()" style="padding:15px 30px; font-size:18px;">
+    Mit GitHub einloggen
+  </button>
 
-<h1 class="text-2xl font-bold mb-6">Kleingewerbe Pro</h1>
+  <p id="status">❌ Nicht eingeloggt</p>
 
-<button id="loginBtn" class="w-full bg-black text-white py-3 rounded-xl mb-4">
-Mit GitHub einloggen
-</button>
+  <script>
+    const supabase = window.supabase.createClient(
+      "https://szcgehcjdnilykynqhqf.supabase.co",
+      "DEIN_ANON_KEY_HIER_EINFÜGEN"
+    );
 
-<div id="status" class="text-sm text-gray-600"></div>
-
-</div>
-
-<script>
-const { createClient } = supabase
-
-const supabaseClient = createClient(
-  "https://szcgehcjdnilykynqhqf.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6Y2dlaGNqZG5pbHlreW5xaHFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwOTkwODgsImV4cCI6MjA4NzY3NTA4OH0.46uxkT1a9GhyDqEBlWJBqoIhfsthyLC2dg_nEDMWdJo",
-  {
-    auth: {
-      persistSession: true,
-      detectSessionInUrl: true
+    async function login() {
+      await supabase.auth.signInWithOAuth({
+        provider: "github",
+        options: {
+          redirectTo: "https://753karoline753-debug.github.io/EBay-App/"
+        }
+      });
     }
-  }
-)
 
-document.getElementById("loginBtn").addEventListener("click", async () => {
-  await supabaseClient.auth.signInWithOAuth({
-    provider: "github",
-    options: {
-      redirectTo: window.location.origin + window.location.pathname
-    }
-  })
-})
-
-async function checkUser() {
-  const { data } = await supabaseClient.auth.getSession()
-
-  if (data.session) {
-    document.getElementById("status").innerText =
-      "✅ Eingeloggt als: " + data.session.user.email
-  } else {
-    document.getElementById("status").innerText =
-      "❌ Nicht eingeloggt"
-  }
-}
-
-checkUser()
-</script>
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        document.getElementById("status").innerHTML = "✅ Eingeloggt";
+      }
+    });
+  </script>
 
 </body>
 </html>
