@@ -6,97 +6,242 @@
 <title>Kleingewerbe Pro</title>
 
 <style>
-body{
-  font-family: Arial;
-  background:#f2f2f2;
-  text-align:center;
-  padding:20px;
-}
-
-.card{
-  background:white;
-  padding:20px;
-  border-radius:15px;
-  max-width:500px;
-  margin:auto;
-  box-shadow:0 5px 20px rgba(0,0,0,0.1);
-}
-
-input{
-  width:100%;
-  padding:10px;
-  margin:5px 0;
-  font-size:16px;
-}
-
-button{
-  padding:12px;
-  margin:8px 0;
-  width:100%;
-  font-size:16px;
-  border:none;
-  border-radius:8px;
-  background:black;
-  color:white;
-}
-
-.result{
-  margin-top:15px;
-  font-weight:bold;
-}
+body{font-family:Arial;background:#f2f2f2;margin:0;}
+.nav{display:flex;background:#000;}
+.nav button{flex:1;padding:12px;border:none;background:#000;color:white;font-size:12px;}
+.section{display:none;padding:15px;}
+.active{display:block;}
+.card{background:white;padding:10px;border-radius:8px;margin-bottom:8px;}
+input,select{width:100%;padding:8px;margin:4px 0;}
+button.action{background:#000;color:white;border:none;padding:10px;width:100%;margin-top:5px;}
+.summary{background:white;padding:15px;border-radius:10px;margin-bottom:10px;}
+h2{margin:5px 0;}
 </style>
 </head>
 
 <body>
 
-<div class="card">
-<h1>Kleingewerbe Pro</h1>
+<div class="nav">
+<button onclick="showTab('dashboard')">📊 Übersicht</button>
+<button onclick="showTab('lager')">📦 Lager</button>
+<button onclick="showTab('verkauft')">💰 Verkauft</button>
+<button onclick="showTab('ausgaben')">💸 Ausgaben</button>
+<button onclick="showTab('unterwegs')">🚚 Unterwegs</button>
+</div>
 
-<input id="artikel" placeholder="Artikelname">
+<!-- DASHBOARD -->
+<div id="dashboard" class="section active">
+<h2>Gesamtübersicht</h2>
+<div class="summary" id="gesamtInfo"></div>
+<button class="action" onclick="exportCSV()">📤 CSV Export</button>
+<button class="action" onclick="exportPDF()">🧾 EÜR als PDF</button>
+</div>
 
-<input id="einkauf" type="number" placeholder="Einkaufspreis €">
+<!-- LAGER -->
+<div id="lager" class="section">
+<h2>Lager</h2>
+<input id="lagerName" placeholder="Artikelname">
+<input id="lagerEK" type="number" placeholder="Einkaufspreis €">
+<button class="action" onclick="addLager()">Speichern</button>
+<div id="lagerListe"></div>
+</div>
 
-<input id="verkauf" type="number" placeholder="Verkaufspreis €">
-
-<label>eBay Gebühr % (Standard 10%)</label>
+<!-- VERKAUFT -->
+<div id="verkauft" class="section">
+<h2>Verkaufen</h2>
+<select id="verkaufArtikel"></select>
+<input id="verkaufPreis" type="number" placeholder="Verkaufspreis €">
 <input id="ebayProzent" type="number" value="10">
-
-<input id="versand" type="number" placeholder="Versandkosten €">
-
+<input id="versand" type="number" placeholder="Versand €">
 <input id="sonstiges" type="number" placeholder="Sonstige Kosten €">
+<button class="action" onclick="verkaufen()">Verkaufen</button>
+<div id="verkaufErgebnis"></div>
+</div>
 
-<button onclick="berechnen()">Gewinn berechnen</button>
-<button onclick="speichern()">Speichern</button>
+<!-- AUSGABEN -->
+<div id="ausgaben" class="section">
+<h2>Ausgaben</h2>
+<input id="ausgabeName" placeholder="Bezeichnung">
+<input id="ausgabeBetrag" type="number" placeholder="Betrag €">
+<button class="action" onclick="addAusgabe()">Speichern</button>
+<div id="ausgabenListe"></div>
+</div>
 
-<div class="result" id="ergebnis"></div>
+<!-- UNTERWEGS -->
+<div id="unterwegs" class="section">
+<h2>Unterwegs</h2>
+<input id="unterwegsName" placeholder="Artikelname">
+<input id="unterwegsEK" type="number" placeholder="Einkaufspreis €">
+<button class="action" onclick="addUnterwegs()">Speichern</button>
+<div id="unterwegsListe"></div>
 </div>
 
 <script>
 
-let daten = JSON.parse(localStorage.getItem("lager")) || [];
+let lager = JSON.parse(localStorage.getItem("lager")) || [];
+let verkauftListe = JSON.parse(localStorage.getItem("verkauft")) || [];
+let ausgaben = JSON.parse(localStorage.getItem("ausgaben")) || [];
+let unterwegs = JSON.parse(localStorage.getItem("unterwegs")) || [];
 
-function berechnen(){
-
-let einkauf = parseFloat(document.getElementById("einkauf").value) || 0;
-let verkauf = parseFloat(document.getElementById("verkauf").value) || 0;
-let ebayProzent = parseFloat(document.getElementById("ebayProzent").value) || 10;
-let versand = parseFloat(document.getElementById("versand").value) || 0;
-let sonstiges = parseFloat(document.getElementById("sonstiges").value) || 0;
-
-let ebayGebuehr = (verkauf * ebayProzent / 100) + 0.42;
-
-let gewinn = verkauf - einkauf - ebayGebuehr - versand - sonstiges;
-
-document.getElementById("ergebnis").innerHTML =
-"eBay Gebühr: " + ebayGebuehr.toFixed(2) + " €<br>" +
-"Gewinn: " + gewinn.toFixed(2) + " €";
+function saveAll(){
+localStorage.setItem("lager",JSON.stringify(lager));
+localStorage.setItem("verkauft",JSON.stringify(verkauftListe));
+localStorage.setItem("ausgaben",JSON.stringify(ausgaben));
+localStorage.setItem("unterwegs",JSON.stringify(unterwegs));
+updateDashboard();
 }
 
-function speichern(){
+function showTab(tab){
+document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
+document.getElementById(tab).classList.add("active");
+}
 
-let artikel = document.getElementById("artikel").value;
+function updateDashboard(){
 
-let einkauf = parseFloat(document.getElementById("einkauf").value) || 0;
-let verkauf = parseFloat(document.getElementById("verkauf").value) || 0;
-let ebayProzent = parseFloat(document.getElementById("ebayProzent").value) || 10;
-let versand = parseFloat(document.getElementBy
+let einnahmen = verkauftListe.reduce((sum,v)=>sum+v.preis,0);
+let wareneinsatz = verkauftListe.reduce((sum,v)=>sum+v.ek,0);
+let ebay = verkauftListe.reduce((sum,v)=>sum+v.ebayGebuehr,0);
+let ausgabenSumme = ausgaben.reduce((sum,a)=>sum+a.betrag,0);
+
+let jahresUeberschuss = einnahmen - wareneinsatz - ebay - ausgabenSumme;
+let steuer = jahresUeberschuss * 0.4;
+
+gesamtInfo.innerHTML =
+"Einnahmen: "+einnahmen.toFixed(2)+" €<br>"+
+"Wareneinsatz: "+wareneinsatz.toFixed(2)+" €<br>"+
+"eBay Gebühren: "+ebay.toFixed(2)+" €<br>"+
+"Ausgaben: "+ausgabenSumme.toFixed(2)+" €<br><br>"+
+"<b>Jahresüberschuss: "+jahresUeberschuss.toFixed(2)+" €</b><br>"+
+"Steuer Rücklage (40%): "+steuer.toFixed(2)+" €<br><br>"+
+"Lager: "+lager.length+" Artikel<br>"+
+"Unterwegs: "+unterwegs.length+" Artikel";
+
+}
+
+function renderLager(){
+lagerListe.innerHTML="";
+verkaufArtikel.innerHTML="";
+lager.forEach((a,i)=>{
+lagerListe.innerHTML+=`<div class="card">${a.name} - EK ${a.ek} €</div>`;
+verkaufArtikel.innerHTML+=`<option value="${i}">${a.name}</option>`;
+});
+}
+
+function addLager(){
+lager.push({name:lagerName.value,ek:parseFloat(lagerEK.value)||0});
+lagerName.value=""; lagerEK.value="";
+saveAll(); renderLager();
+}
+
+function verkaufen(){
+
+let index = verkaufArtikel.value;
+let artikel = lager[index];
+
+let preis = parseFloat(verkaufPreis.value)||0;
+let ebayProzent = parseFloat(document.getElementById("ebayProzent").value)||10;
+let versand = parseFloat(document.getElementById("versand").value)||0;
+let sonstiges = parseFloat(document.getElementById("sonstiges").value)||0;
+
+let ebayGebuehr = (preis*ebayProzent/100)+0.42;
+let gewinn = preis - artikel.ek - ebayGebuehr - versand - sonstiges;
+
+verkauftListe.push({
+datum:new Date().toLocaleDateString(),
+name:artikel.name,
+ek:artikel.ek,
+preis,
+ebayGebuehr,
+gewinn
+});
+
+lager.splice(index,1);
+
+saveAll();
+renderLager();
+
+verkaufErgebnis.innerHTML="Gewinn: "+gewinn.toFixed(2)+" €";
+
+}
+
+function addAusgabe(){
+ausgaben.push({
+datum:new Date().toLocaleDateString(),
+name:ausgabeName.value,
+betrag:parseFloat(ausgabeBetrag.value)||0
+});
+ausgabeName.value=""; ausgabeBetrag.value="";
+saveAll(); renderAusgaben();
+}
+
+function renderAusgaben(){
+ausgabenListe.innerHTML="";
+ausgaben.forEach(a=>{
+ausgabenListe.innerHTML+=`<div class="card">${a.name} - ${a.betrag} €</div>`;
+});
+}
+
+function addUnterwegs(){
+unterwegs.push({name:unterwegsName.value,ek:parseFloat(unterwegsEK.value)||0});
+unterwegsName.value=""; unterwegsEK.value="";
+saveAll(); renderUnterwegs();
+}
+
+function renderUnterwegs(){
+unterwegsListe.innerHTML="";
+unterwegs.forEach(a=>{
+unterwegsListe.innerHTML+=`<div class="card">${a.name} - EK ${a.ek} €</div>`;
+});
+}
+
+function exportCSV(){
+let csv="Datum,Artikel,EK,Verkauf,eBay Gebühr,Gewinn\n";
+verkauftListe.forEach(v=>{
+csv+=`${v.datum},${v.name},${v.ek},${v.preis},${v.ebayGebuehr},${v.gewinn}\n`;
+});
+let blob=new Blob([csv],{type:"text/csv"});
+let url=URL.createObjectURL(blob);
+let a=document.createElement("a");
+a.href=url;
+a.download="verkaeufe.csv";
+a.click();
+}
+
+function exportPDF(){
+
+let einnahmen = verkauftListe.reduce((sum,v)=>sum+v.preis,0);
+let wareneinsatz = verkauftListe.reduce((sum,v)=>sum+v.ek,0);
+let ebay = verkauftListe.reduce((sum,v)=>sum+v.ebayGebuehr,0);
+let ausgabenSumme = ausgaben.reduce((sum,a)=>sum+a.betrag,0);
+let jahresUeberschuss = einnahmen - wareneinsatz - ebay - ausgabenSumme;
+let steuer = jahresUeberschuss*0.4;
+
+let content = `
+EÜR Jahresübersicht
+
+Einnahmen: ${einnahmen.toFixed(2)} €
+Wareneinsatz: ${wareneinsatz.toFixed(2)} €
+eBay Gebühren: ${ebay.toFixed(2)} €
+Ausgaben: ${ausgabenSumme.toFixed(2)} €
+
+--------------------------------
+Jahresüberschuss: ${jahresUeberschuss.toFixed(2)} €
+Steuer Rücklage (40%): ${steuer.toFixed(2)} €
+`;
+
+let win = window.open("", "", "width=800,height=600");
+win.document.write("<pre style='font-size:16px'>" + content + "</pre>");
+win.document.close();
+win.print();
+
+}
+
+renderLager();
+renderAusgaben();
+renderUnterwegs();
+updateDashboard();
+
+</script>
+
+</body>
+</html>
