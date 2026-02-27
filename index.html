@@ -6,36 +6,87 @@
   <title>Kleingewerbe Pro</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body style="font-family: Arial; text-align:center; padding-top:100px;">
 
-  <h1>Kleingewerbe Pro</h1>
+<body style="font-family: Arial; text-align:center; padding-top:80px; background:#f3f4f6;">
 
-  <button onclick="login()" style="padding:15px 30px; font-size:18px;">
-    Mit GitHub einloggen
-  </button>
+  <div style="background:#fff; width:320px; margin:0 auto; padding:28px; border-radius:18px; box-shadow:0 10px 30px rgba(0,0,0,.08);">
+    <h1 style="margin:0 0 18px 0;">Kleingewerbe Pro</h1>
 
-  <p id="status">❌ Nicht eingeloggt</p>
+    <button id="loginBtn" style="padding:14px 18px; font-size:16px; width:100%; border:none; border-radius:12px; background:#111; color:#fff; cursor:pointer;">
+      Mit GitHub einloggen
+    </button>
+
+    <button id="logoutBtn" style="padding:12px 18px; font-size:14px; width:100%; border:none; border-radius:12px; background:#e11d48; color:#fff; cursor:pointer; margin-top:10px; display:none;">
+      Logout
+    </button>
+
+    <p id="status" style="margin-top:16px;">⏳ Prüfe Login…</p>
+  </div>
 
   <script>
-    const supabase = window.supabase.createClient(
+    // ✅ Supabase korrekt initialisieren (mit Session Handling)
+    const supabaseClient = window.supabase.createClient(
       "https://szcgehcjdnilykynqhqf.supabase.co",
-      "DEIN_ANON_KEY_HIER_EINFÜGEN"
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6Y2dlaGNqZG5pbHlreW5xaHFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwOTkwODgsImV4cCI6MjA4NzY3NTA4OH0.46uxkT1a9GhyDqEBlWJBqoIhfsthyLC2dg_nEDMWdJo",
+      {
+        auth: {
+          persistSession: true,
+          detectSessionInUrl: true
+        }
+      }
     );
 
+    const statusEl = document.getElementById("status");
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    // ✅ Login starten
     async function login() {
-      await supabase.auth.signInWithOAuth({
+      // feste Redirect URL, ohne Parameter (stabiler auf iPhone)
+      const redirectTo = "https://753karoline753-debug.github.io/EBay-App/";
+      const { error } = await supabaseClient.auth.signInWithOAuth({
         provider: "github",
-        options: {
-          redirectTo: "https://753karoline753-debug.github.io/EBay-App/"
-        }
+        options: { redirectTo }
       });
+      if (error) {
+        statusEl.textContent = "❌ Login Fehler: " + error.message;
+      }
     }
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        document.getElementById("status").innerHTML = "✅ Eingeloggt";
+    // ✅ Logout
+    async function logout() {
+      await supabaseClient.auth.signOut();
+      location.reload();
+    }
+
+    loginBtn.addEventListener("click", login);
+    logoutBtn.addEventListener("click", logout);
+
+    // ✅ Session prüfen und UI updaten
+    async function updateUI() {
+      const { data, error } = await supabaseClient.auth.getSession();
+      if (error) {
+        statusEl.textContent = "❌ Session Fehler: " + error.message;
+        return;
       }
+
+      if (data.session) {
+        statusEl.textContent = "✅ Eingeloggt als: " + (data.session.user.email || data.session.user.id);
+        loginBtn.style.display = "none";
+        logoutBtn.style.display = "block";
+      } else {
+        statusEl.textContent = "❌ Nicht eingeloggt";
+        loginBtn.style.display = "block";
+        logoutBtn.style.display = "none";
+      }
+    }
+
+    // Wenn OAuth zurückkommt, feuert onAuthStateChange oft zuverlässiger
+    supabaseClient.auth.onAuthStateChange((_event, _session) => {
+      updateUI();
     });
+
+    updateUI();
   </script>
 
 </body>
