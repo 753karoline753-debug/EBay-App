@@ -1,229 +1,102 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Kleingewerbe Pro</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kleingewerbe Pro</title>
 
-  <!-- Safari-freundlicher Supabase v2 UMD Build -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+body{
+  font-family: Arial;
+  background:#f2f2f2;
+  text-align:center;
+  padding:20px;
+}
 
-  <style>
-    body { font-family: -apple-system, system-ui, Arial; background:#f3f4f6; margin:0; }
-    .wrap { max-width: 720px; margin: 60px auto; padding: 0 16px; }
-    .card { background:#fff; border-radius: 18px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,.08); }
-    h1 { margin: 0 0 6px; font-size: 42px; }
-    .sub { color:#555; margin: 0 0 18px; }
-    button {
-      width: 100%;
-      padding: 16px 18px;
-      border: 0;
-      border-radius: 14px;
-      font-size: 18px;
-      cursor: pointer;
-    }
-    #btnGithub { background:#000; color:#fff; }
-    .row { display:flex; gap:12px; margin-top: 12px; }
-    .row button { background:#e5e7eb; color:#111; }
-    input {
-      width: 100%;
-      padding: 14px 14px;
-      font-size: 16px;
-      border-radius: 12px;
-      border: 1px solid #ddd;
-      outline: none;
-    }
-    #status { margin-top: 14px; font-weight: 600; }
-    #log {
-      margin-top: 14px;
-      padding: 12px;
-      background: #0b1220;
-      color: #d1e7ff;
-      border-radius: 12px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 12px;
-      white-space: pre-wrap;
-      word-break: break-word;
-      min-height: 70px;
-    }
-    .hint { margin-top: 10px; color:#666; font-size: 14px; }
-    .disabled { opacity:.55; pointer-events:none; }
-  </style>
+.card{
+  background:white;
+  padding:20px;
+  border-radius:15px;
+  max-width:500px;
+  margin:auto;
+  box-shadow:0 5px 20px rgba(0,0,0,0.1);
+}
+
+input{
+  width:100%;
+  padding:10px;
+  margin:5px 0;
+  font-size:16px;
+}
+
+button{
+  padding:12px;
+  margin:8px 0;
+  width:100%;
+  font-size:16px;
+  border:none;
+  border-radius:8px;
+  background:black;
+  color:white;
+}
+
+.result{
+  margin-top:15px;
+  font-weight:bold;
+}
+</style>
 </head>
 
 <body>
-  <div class="wrap">
-    <div class="card">
-      <h1>Kleingewerbe Pro</h1>
-      <p class="sub">Cloud-Speicherung (Supabase) – Login</p>
 
-      <button id="btnGithub" type="button">Mit GitHub einloggen</button>
+<div class="card">
+<h1>Kleingewerbe Pro</h1>
 
-      <div style="height:14px"></div>
+<input id="artikel" placeholder="Artikelname">
 
-      <div>
-        <div style="font-weight:600; margin-bottom:8px;">Backup: Login per E-Mail (Magic Link)</div>
-        <input id="email" type="email" placeholder="dein@email.de" value="press.a.to.buy@gmx.de" />
-        <div class="row">
-          <button id="btnMagic" type="button">Link senden</button>
-          <button id="btnLogout" type="button">Logout</button>
-        </div>
-        <div class="row">
-          <button id="btnReset" type="button">Reset / Cache löschen</button>
-          <button id="btnStart" type="button">⏳ Starte…</button>
-        </div>
-      </div>
+<input id="einkauf" type="number" placeholder="Einkaufspreis €">
 
-      <div id="status">❌ Nicht eingeloggt</div>
-      <div id="log">Log startet…</div>
+<input id="verkauf" type="number" placeholder="Verkaufspreis €">
 
-      <div class="hint">
-        Tipp: Öffne die Seite wirklich in <b>Safari</b> (nicht Instagram/TikTok Browser).<br>
-        Wenn Buttons nicht reagieren: iPhone “Inhalt-Blocker” oder Script lädt nicht → Log unten anschauen.
-      </div>
-    </div>
-  </div>
+<label>eBay Gebühr % (Standard 10%)</label>
+<input id="ebayProzent" type="number" value="10">
 
-  <script>
-    // ✅ HIER EINSETZEN:
-    const SUPABASE_URL = "https://szcgehcjdnilykynqhqf.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6Y2dlaGNqZG5pbHlreW5xaHFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwOTkwODgsImV4cCI6MjA4NzY3NTA4OH0.46uxkT1a9GhyDqEBlWJBqoIhfsthyLC2dg_nEDMWdJo"
-  
+<input id="versand" type="number" placeholder="Versandkosten €">
 
-    const REDIRECT_TO = "https://753karoline753-debug.github.io/EBay-App/"; // exakt mit Slash
+<input id="sonstiges" type="number" placeholder="Sonstige Kosten €">
 
-    const $ = (id) => document.getElementById(id);
-    const log = (msg) => { $("log").textContent += "\n" + msg; };
-    const setStatus = (ok, text) => { $("status").textContent = (ok ? "✅ " : "❌ ") + text; };
+<button onclick="berechnen()">Gewinn berechnen</button>
+<button onclick="speichern()">Speichern</button>
 
-    function setBusy(isBusy) {
-      const ids = ["btnGithub","btnMagic","btnLogout","btnReset","btnStart","email"];
-      ids.forEach(id => {
-        const el = $(id);
-        if (!el) return;
-        if (isBusy) el.classList.add("disabled");
-        else el.classList.remove("disabled");
-      });
-    }
+<div class="result" id="ergebnis"></div>
+</div>
 
-    // Guard: Wenn Supabase nicht geladen -> Buttons "tot"
-    if (!window.supabase) {
-      $("log").textContent = "❌ Supabase Script wurde NICHT geladen.\n" +
-        "Check: Inhalt-Blocker/Privatmodus/kein Internet.\n" +
-        "Versuch: Safari → aA → Inhalt-Blocker aus (für diese Seite).";
-      setBusy(true);
-    } else {
-      const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+<script>
 
-      async function init() {
-        try {
-          $("log").textContent = "✅ Script geladen.\nInit…";
-          setBusy(true);
+let daten = JSON.parse(localStorage.getItem("lager")) || [];
 
-          // ✅ WICHTIG: OAuth Redirect abschließen (PKCE Code gegen Session tauschen)
-          const url = new URL(window.location.href);
-          const hasCode = url.searchParams.get("code");
-          if (hasCode) {
-            log("OAuth code gefunden → exchangeCodeForSession…");
-            const { data, error } = await supabaseClient.auth.exchangeCodeForSession(window.location.href);
-            if (error) throw error;
-            log("✅ Session erhalten.");
-            // URL aufräumen (code entfernen)
-            window.history.replaceState({}, document.title, REDIRECT_TO);
-          }
+function berechnen(){
 
-          // Session prüfen
-          const { data: { session } } = await supabaseClient.auth.getSession();
-          if (session) {
-            setStatus(true, "Eingeloggt");
-            log("User: " + (session.user?.email || session.user?.id));
-          } else {
-            setStatus(false, "Nicht eingeloggt");
-            log("Keine Session vorhanden.");
-          }
+let einkauf = parseFloat(document.getElementById("einkauf").value) || 0;
+let verkauf = parseFloat(document.getElementById("verkauf").value) || 0;
+let ebayProzent = parseFloat(document.getElementById("ebayProzent").value) || 10;
+let versand = parseFloat(document.getElementById("versand").value) || 0;
+let sonstiges = parseFloat(document.getElementById("sonstiges").value) || 0;
 
-          // Reagiert auf Login/Logout live
-          supabaseClient.auth.onAuthStateChange((_event, sessionNow) => {
-            if (sessionNow) setStatus(true, "Eingeloggt");
-            else setStatus(false, "Nicht eingeloggt");
-          });
+let ebayGebuehr = (verkauf * ebayProzent / 100) + 0.42;
 
-        } catch (e) {
-          setStatus(false, "Fehler – siehe Log");
-          log("❌ ERROR: " + (e?.message || JSON.stringify(e)));
-        } finally {
-          setBusy(false);
-          $("btnStart").textContent = "✅ Starte";
-        }
-      }
+let gewinn = verkauf - einkauf - ebayGebuehr - versand - sonstiges;
 
-      async function loginGithub() {
-        try {
-          setBusy(true);
-          log("Starte GitHub Login…");
-          const { data, error } = await supabaseClient.auth.signInWithOAuth({
-            provider: "github",
-            options: { redirectTo: REDIRECT_TO }
-          });
-          if (error) throw error;
-          log("Weiterleitung… " + (data?.url || ""));
-          // Browser wird weiterleiten
-        } catch (e) {
-          log("❌ Login Fehler: " + (e?.message || JSON.stringify(e)));
-          setBusy(false);
-        }
-      }
+document.getElementById("ergebnis").innerHTML =
+"eBay Gebühr: " + ebayGebuehr.toFixed(2) + " €<br>" +
+"Gewinn: " + gewinn.toFixed(2) + " €";
+}
 
-      async function sendMagic() {
-        try {
-          setBusy(true);
-          const email = $("email").value.trim();
-          if (!email) { log("❌ Bitte E-Mail eingeben."); return; }
-          log("Sende Magic Link an: " + email);
-          const { error } = await supabaseClient.auth.signInWithOtp({
-            email,
-            options: { emailRedirectTo: REDIRECT_TO }
-          });
-          if (error) throw error;
-          log("✅ Link gesendet. Öffne die E-Mail und klicke den Link (in Safari).");
-        } catch (e) {
-          log("❌ Magic Link Fehler: " + (e?.message || JSON.stringify(e)));
-        } finally {
-          setBusy(false);
-        }
-      }
+function speichern(){
 
-      async function logout() {
-        try {
-          setBusy(true);
-          log("Logout…");
-          const { error } = await supabaseClient.auth.signOut();
-          if (error) throw error;
-          log("✅ Ausgeloggt.");
-        } catch (e) {
-          log("❌ Logout Fehler: " + (e?.message || JSON.stringify(e)));
-        } finally {
-          setBusy(false);
-        }
-      }
+let artikel = document.getElementById("artikel").value;
 
-      function resetLocal() {
-        log("Reset: localStorage/sessionStorage gelöscht + Reload…");
-        try { localStorage.clear(); } catch {}
-        try { sessionStorage.clear(); } catch {}
-        window.location.reload(true);
-      }
-
-      // Buttons binden (kein inline onclick)
-      $("btnGithub").addEventListener("click", loginGithub);
-      $("btnMagic").addEventListener("click", sendMagic);
-      $("btnLogout").addEventListener("click", logout);
-      $("btnReset").addEventListener("click", resetLocal);
-      $("btnStart").addEventListener("click", init);
-
-      // Auto-Init
-      init();
-    }
-  </script>
-</body>
-</html>
+let einkauf = parseFloat(document.getElementById("einkauf").value) || 0;
+let verkauf = parseFloat(document.getElementById("verkauf").value) || 0;
+let ebayProzent = parseFloat(document.getElementById("ebayProzent").value) || 10;
+let versand = parseFloat(document.getElementBy
