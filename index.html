@@ -15,7 +15,7 @@ body{font-family:Arial;background:#f2f2f2;margin:0}
 input,select{width:100%;padding:8px;margin:4px 0}
 button.action{background:#000;color:#fff;border:none;padding:10px;width:100%;margin-top:5px}
 .summary{background:#fff;padding:15px;border-radius:10px;margin-bottom:10px}
-canvas{background:#fff;border-radius:10px;margin-top:10px}
+.sold{ text-decoration: line-through; color: gray; }
 h2{margin:5px 0}
 </style>
 </head>
@@ -24,83 +24,53 @@ h2{margin:5px 0}
 <div class="nav">
 <button onclick="showTab('dashboard')">📊 Übersicht</button>
 <button onclick="showTab('lager')">📦 Lager</button>
-<button onclick="showTab('verkauft')">💰 Verkauf</button>
-<button onclick="showTab('ausgaben')">💸 Ausgaben</button>
-<button onclick="showTab('unterwegs')">🚚 Unterwegs</button>
-<button onclick="showTab('backup')">💾 Backup</button>
+<button onclick="showTab('verkauf')">💰 Verkauf</button>
 </div>
 
 <!-- DASHBOARD -->
 <div id="dashboard" class="section active">
 <h2>Gesamtübersicht</h2>
 <div class="summary" id="gesamtInfo"></div>
-<canvas id="chart" height="150"></canvas>
-<button class="action" onclick="exportCSV()">📤 CSV Export</button>
-<button class="action" onclick="exportPDF()">🧾 EÜR PDF</button>
 </div>
 
 <!-- LAGER -->
 <div id="lager" class="section">
-<h2>Lager</h2>
+<h2>Lager hinzufügen</h2>
+
 <input id="lagerName" placeholder="Artikelname">
 <input id="lagerEK" type="number" placeholder="Einkaufspreis €">
+
+<input id="lagerPlattform" placeholder="Plattform gekauft bei (eBay, Vinted...)">
+<input id="lagerDatum" type="date">
+<input id="lagerZahlung" placeholder="Bezahlart (PayPal, Bar...)">
+
 <button class="action" onclick="addLager()">Speichern</button>
+
+<h2>Bestand</h2>
 <div id="lagerListe"></div>
 </div>
 
 <!-- VERKAUF -->
-<div id="verkauft" class="section">
+<div id="verkauf" class="section">
 <h2>Artikel verkaufen</h2>
 <select id="verkaufArtikel"></select>
 <input id="verkaufPreis" type="number" placeholder="Verkaufspreis €">
 <input id="ebayProzent" type="number" value="10">
 <input id="versand" type="number" placeholder="Versand €">
 <input id="sonstiges" type="number" placeholder="Sonstige Kosten €">
+
 <button class="action" onclick="verkaufen()">Verkaufen</button>
 <div id="verkaufErgebnis"></div>
 </div>
 
-<!-- AUSGABEN -->
-<div id="ausgaben" class="section">
-<h2>Ausgaben</h2>
-<input id="ausgabeName" placeholder="Bezeichnung">
-<input id="ausgabeBetrag" type="number" placeholder="Betrag €">
-<button class="action" onclick="addAusgabe()">Speichern</button>
-<div id="ausgabenListe"></div>
-</div>
-
-<!-- UNTERWEGS -->
-<div id="unterwegs" class="section">
-<h2>Unterwegs</h2>
-<input id="unterwegsName" placeholder="Artikelname">
-<input id="unterwegsEK" type="number" placeholder="Einkaufspreis €">
-<button class="action" onclick="addUnterwegs()">Speichern</button>
-<button class="action" onclick="importUnterwegs()">Ins Lager übernehmen</button>
-<div id="unterwegsListe"></div>
-</div>
-
-<!-- BACKUP -->
-<div id="backup" class="section">
-<h2>Backup</h2>
-<button class="action" onclick="createBackup()">Backup erstellen</button>
-<input type="file" id="importFile" accept=".json">
-<button class="action" onclick="restoreBackup()">Backup wiederherstellen</button>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <script>
 
-let lager=JSON.parse(localStorage.getItem("lager"))||[];
-let verkauftListe=JSON.parse(localStorage.getItem("verkauft"))||[];
-let ausgaben=JSON.parse(localStorage.getItem("ausgaben"))||[];
-let unterwegs=JSON.parse(localStorage.getItem("unterwegs"))||[];
+let lager = JSON.parse(localStorage.getItem("lager")) || [];
+let verkauftListe = JSON.parse(localStorage.getItem("verkauft")) || [];
 
 function saveAll(){
 localStorage.setItem("lager",JSON.stringify(lager));
 localStorage.setItem("verkauft",JSON.stringify(verkauftListe));
-localStorage.setItem("ausgaben",JSON.stringify(ausgaben));
-localStorage.setItem("unterwegs",JSON.stringify(unterwegs));
 updateDashboard();
 }
 
@@ -109,188 +79,103 @@ document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
 document.getElementById(tab).classList.add("active");
 }
 
-function updateDashboard(){
+function addLager(){
 
-let einnahmen=verkauftListe.reduce((s,v)=>s+v.preis,0);
-let wareneinsatz=verkauftListe.reduce((s,v)=>s+v.ek,0);
-let ebay=verkauftListe.reduce((s,v)=>s+v.ebayGebuehr,0);
-let ausgabenSum=ausgaben.reduce((s,a)=>s+a.betrag,0);
-let gewinn=einnahmen-wareneinsatz-ebay-ausgabenSum;
-let steuer=gewinn*0.4;
+lager.push({
+name:lagerName.value,
+ek:parseFloat(lagerEK.value)||0,
+plattform:lagerPlattform.value,
+datum:lagerDatum.value,
+zahlung:lagerZahlung.value,
+verkauft:false
+});
 
-gesamtInfo.innerHTML=
-"Einnahmen: "+einnahmen.toFixed(2)+" €<br>"+
-"Wareneinsatz: "+wareneinsatz.toFixed(2)+" €<br>"+
-"eBay Gebühren: "+ebay.toFixed(2)+" €<br>"+
-"Ausgaben: "+ausgabenSum.toFixed(2)+" €<br><br>"+
-"<b>Jahresüberschuss: "+gewinn.toFixed(2)+" €</b><br>"+
-"Steuer Rücklage (40%): "+steuer.toFixed(2)+" €<br><br>"+
-"Lager: "+lager.length+" Artikel";
+lagerName.value="";
+lagerEK.value="";
+lagerPlattform.value="";
+lagerDatum.value="";
+lagerZahlung.value="";
 
-drawChart();
+saveAll();
+renderLager();
 }
 
 function renderLager(){
+
 lagerListe.innerHTML="";
 verkaufArtikel.innerHTML="";
+
 lager.forEach((a,i)=>{
-lagerListe.innerHTML+=`<div class="card">${a.name} - ${a.ek} €</div>`;
-verkaufArtikel.innerHTML+=`<option value="${i}">${a.name}</option>`;
-});
+
+let klasse = a.verkauft ? "sold" : "";
+
+lagerListe.innerHTML += `
+<div class="card ${klasse}">
+<b>${a.name}</b><br>
+EK: ${a.ek} €<br>
+Plattform: ${a.plattform}<br>
+Gekauft am: ${a.datum}<br>
+Bezahlart: ${a.zahlung}<br>
+Status: ${a.verkauft ? "Verkauft" : "Im Lager"}
+</div>
+`;
+
+if(!a.verkauft){
+verkaufArtikel.innerHTML += `<option value="${i}">${a.name}</option>`;
 }
 
-function addLager(){
-lager.push({name:lagerName.value,ek:parseFloat(lagerEK.value)||0});
-lagerName.value="";lagerEK.value="";
-saveAll();renderLager();
+});
 }
 
 function verkaufen(){
 
-let i=verkaufArtikel.value;
-let artikel=lager[i];
-let preis=parseFloat(verkaufPreis.value)||0;
-let prozent=parseFloat(ebayProzent.value)||10;
-let versand=parseFloat(versand.value)||0;
-let sonst=parseFloat(sonstiges.value)||0;
+let index = verkaufArtikel.value;
+let artikel = lager[index];
 
-let ebayGeb=(preis*prozent/100)+0.42;
-let gewinn=preis-artikel.ek-ebayGeb-versand-sonst;
+let preis = parseFloat(verkaufPreis.value)||0;
+let prozent = parseFloat(ebayProzent.value)||10;
+let versandKosten = parseFloat(document.getElementById("versand").value)||0;
+let sonst = parseFloat(document.getElementById("sonstiges").value)||0;
+
+let ebayGeb = (preis*prozent/100)+0.42;
+let gewinn = preis - artikel.ek - ebayGeb - versandKosten - sonst;
+
+artikel.verkauft = true;
 
 verkauftListe.push({
 datum:new Date(),
 name:artikel.name,
 ek:artikel.ek,
 preis,
-ebayGebuehr:ebayGeb,
 gewinn
 });
 
-lager.splice(i,1);
 saveAll();
 renderLager();
 
 verkaufErgebnis.innerHTML="Gewinn: "+gewinn.toFixed(2)+" €";
-}
-
-function addAusgabe(){
-ausgaben.push({
-datum:new Date(),
-name:ausgabeName.value,
-betrag:parseFloat(ausgabeBetrag.value)||0
-});
-ausgabeName.value="";ausgabeBetrag.value="";
-saveAll();renderAusgaben();
-}
-
-function renderAusgaben(){
-ausgabenListe.innerHTML="";
-ausgaben.forEach(a=>{
-ausgabenListe.innerHTML+=`<div class="card">${a.name} - ${a.betrag} €</div>`;
-});
-}
-
-function addUnterwegs(){
-unterwegs.push({name:unterwegsName.value,ek:parseFloat(unterwegsEK.value)||0});
-unterwegsName.value="";unterwegsEK.value="";
-saveAll();renderUnterwegs();
-}
-
-function renderUnterwegs(){
-unterwegsListe.innerHTML="";
-unterwegs.forEach(a=>{
-unterwegsListe.innerHTML+=`<div class="card">${a.name} - ${a.ek} €</div>`;
-});
-}
-
-function importUnterwegs(){
-unterwegs.forEach(a=>lager.push(a));
-unterwegs=[];
-saveAll();renderUnterwegs();renderLager();
-}
-
-/* ===== Diagramm ===== */
-
-let chart;
-
-function drawChart(){
-
-let monate=[...Array(12).keys()];
-let daten=new Array(12).fill(0);
-
-verkauftListe.forEach(v=>{
-let m=new Date(v.datum).getMonth();
-daten[m]+=v.gewinn;
-});
-
-if(chart)chart.destroy();
-
-chart=new Chart(document.getElementById("chart"),{
-type:"bar",
-data:{
-labels:["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"],
-datasets:[{
-label:"Monatsgewinn",
-data:daten
-}]
-}
-});
 
 }
 
-/* ===== Export ===== */
+function updateDashboard(){
 
-function exportCSV(){
-let csv="Datum,Artikel,EK,Verkauf,Gewinn\n";
-verkauftListe.forEach(v=>{
-csv+=`${new Date(v.datum).toLocaleDateString()},${v.name},${v.ek},${v.preis},${v.gewinn}\n`;
-});
-let blob=new Blob([csv],{type:"text/csv"});
-let url=URL.createObjectURL(blob);
-let a=document.createElement("a");
-a.href=url;a.download="verkaeufe.csv";a.click();
-}
+let einnahmen = verkauftListe.reduce((s,v)=>s+v.preis,0);
+let wareneinsatz = verkauftListe.reduce((s,v)=>s+v.ek,0);
+let gewinn = einnahmen - wareneinsatz;
+let steuer = gewinn*0.4;
 
-function exportPDF(){
+gesamtInfo.innerHTML=
+"Einnahmen: "+einnahmen.toFixed(2)+" €<br>"+
+"Wareneinsatz: "+wareneinsatz.toFixed(2)+" €<br>"+
+"<b>Gewinn: "+gewinn.toFixed(2)+" €</b><br>"+
+"Steuer Rücklage (40%): "+steuer.toFixed(2)+" €";
 
-let text=gesamtInfo.innerText;
-let win=window.open("");
-win.document.write("<pre style='font-size:16px'>"+text+"</pre>");
-win.print();
-}
-
-/* ===== Backup ===== */
-
-function createBackup(){
-let data={lager,verkauftListe,ausgaben,unterwegs};
-let blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
-let url=URL.createObjectURL(blob);
-let a=document.createElement("a");
-a.href=url;a.download="backup.json";a.click();
-}
-
-function restoreBackup(){
-let file=document.getElementById("importFile").files[0];
-if(!file)return alert("Datei wählen");
-let reader=new FileReader();
-reader.onload=function(e){
-let data=JSON.parse(e.target.result);
-lager=data.lager||[];
-verkauftListe=data.verkauftListe||[];
-ausgaben=data.ausgaben||[];
-unterwegs=data.unterwegs||[];
-saveAll();
-renderLager();renderAusgaben();renderUnterwegs();
-alert("Wiederhergestellt");
-};
-reader.readAsText(file);
 }
 
 renderLager();
-renderAusgaben();
-renderUnterwegs();
 updateDashboard();
 
 </script>
+
 </body>
 </html>
