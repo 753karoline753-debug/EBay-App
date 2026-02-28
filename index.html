@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
@@ -13,9 +13,10 @@ body{font-family:Arial;background:#f2f2f2;margin:0}
 .active{display:block}
 .card{background:#fff;padding:10px;border-radius:8px;margin-bottom:8px}
 input,select{width:100%;padding:8px;margin:4px 0}
-button.action{background:#000;color:#fff;border:none;padding:10px;width:100%;margin-top:5px}
+button.action{background:#000;color:#fff;border:none;padding:8px;margin-top:4px}
+button.small{padding:5px 8px;font-size:12px;margin-right:5px}
 .summary{background:#fff;padding:15px;border-radius:10px;margin-bottom:10px}
-.sold{ text-decoration: line-through; color: gray; }
+.sold{text-decoration:line-through;color:gray}
 h2{margin:5px 0}
 </style>
 </head>
@@ -35,14 +36,13 @@ h2{margin:5px 0}
 
 <!-- LAGER -->
 <div id="lager" class="section">
-<h2>Lager hinzufügen</h2>
+<h2>Artikel hinzufügen</h2>
 
 <input id="lagerName" placeholder="Artikelname">
 <input id="lagerEK" type="number" placeholder="Einkaufspreis €">
-
-<input id="lagerPlattform" placeholder="Plattform gekauft bei (eBay, Vinted...)">
+<input id="lagerPlattform" placeholder="Plattform">
 <input id="lagerDatum" type="date">
-<input id="lagerZahlung" placeholder="Bezahlart (PayPal, Bar...)">
+<input id="lagerZahlung" placeholder="Bezahlart">
 
 <button class="action" onclick="addLager()">Speichern</button>
 
@@ -56,9 +56,6 @@ h2{margin:5px 0}
 <select id="verkaufArtikel"></select>
 <input id="verkaufPreis" type="number" placeholder="Verkaufspreis €">
 <input id="ebayProzent" type="number" value="10">
-<input id="versand" type="number" placeholder="Versand €">
-<input id="sonstiges" type="number" placeholder="Sonstige Kosten €">
-
 <button class="action" onclick="verkaufen()">Verkaufen</button>
 <div id="verkaufErgebnis"></div>
 </div>
@@ -80,7 +77,6 @@ document.getElementById(tab).classList.add("active");
 }
 
 function addLager(){
-
 lager.push({
 name:lagerName.value,
 ek:parseFloat(lagerEK.value)||0,
@@ -111,12 +107,15 @@ let klasse = a.verkauft ? "sold" : "";
 
 lagerListe.innerHTML += `
 <div class="card ${klasse}">
-<b>${a.name}</b><br>
-EK: ${a.ek} €<br>
-Plattform: ${a.plattform}<br>
-Gekauft am: ${a.datum}<br>
-Bezahlart: ${a.zahlung}<br>
-Status: ${a.verkauft ? "Verkauft" : "Im Lager"}
+<input value="${a.name}" onchange="editArtikel(${i},'name',this.value)">
+<input type="number" value="${a.ek}" onchange="editArtikel(${i},'ek',this.value)">
+<input value="${a.plattform}" onchange="editArtikel(${i},'plattform',this.value)">
+<input type="date" value="${a.datum}" onchange="editArtikel(${i},'datum',this.value)">
+<input value="${a.zahlung}" onchange="editArtikel(${i},'zahlung',this.value)">
+<p>Status: ${a.verkauft ? "Verkauft" : "Im Lager"}</p>
+
+<button class="small" onclick="toggleStatus(${i})">Status ändern</button>
+<button class="small" onclick="deleteArtikel(${i})">Löschen</button>
 </div>
 `;
 
@@ -127,6 +126,26 @@ verkaufArtikel.innerHTML += `<option value="${i}">${a.name}</option>`;
 });
 }
 
+function editArtikel(index, feld, wert){
+if(feld==="ek") wert=parseFloat(wert)||0;
+lager[index][feld]=wert;
+saveAll();
+}
+
+function toggleStatus(index){
+lager[index].verkauft = !lager[index].verkauft;
+saveAll();
+renderLager();
+}
+
+function deleteArtikel(index){
+if(confirm("Artikel wirklich löschen?")){
+lager.splice(index,1);
+saveAll();
+renderLager();
+}
+}
+
 function verkaufen(){
 
 let index = verkaufArtikel.value;
@@ -134,11 +153,8 @@ let artikel = lager[index];
 
 let preis = parseFloat(verkaufPreis.value)||0;
 let prozent = parseFloat(ebayProzent.value)||10;
-let versandKosten = parseFloat(document.getElementById("versand").value)||0;
-let sonst = parseFloat(document.getElementById("sonstiges").value)||0;
-
 let ebayGeb = (preis*prozent/100)+0.42;
-let gewinn = preis - artikel.ek - ebayGeb - versandKosten - sonst;
+let gewinn = preis - artikel.ek - ebayGeb;
 
 artikel.verkauft = true;
 
@@ -154,7 +170,6 @@ saveAll();
 renderLager();
 
 verkaufErgebnis.innerHTML="Gewinn: "+gewinn.toFixed(2)+" €";
-
 }
 
 function updateDashboard(){
