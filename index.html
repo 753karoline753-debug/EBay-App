@@ -1,212 +1,669 @@
 <!doctype html>
 <html lang="de">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Kleingewerbe Pro</title>
-<script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>eBay Wawi (lokal) – Lager, Verkäufe, PDF Import</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- PDF.js für lokalen PDF Import -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 
 <body class="bg-gray-100">
-<div class="max-w-xl mx-auto p-4 space-y-5">
+  <div class="max-w-xl mx-auto p-4 space-y-5">
+    <h1 class="text-2xl font-bold text-center">Warenwirtschaft (lokal)</h1>
 
-<h1 class="text-2xl font-bold text-center">Kleingewerbe Manager</h1>
+    <!-- Tabs -->
+    <div class="flex bg-white rounded-xl shadow overflow-hidden">
+      <button id="btnStock" class="flex-1 py-3" type="button">Lager</button>
+      <button id="btnSales" class="flex-1 py-3" type="button">Verkäufe</button>
+      <button id="btnExp" class="flex-1 py-3" type="button">Ausgaben</button>
+      <button id="btnDash" class="flex-1 py-3" type="button">Übersicht</button>
+    </div>
 
-<div class="flex bg-white rounded-xl shadow overflow-hidden">
-<button id="b1" class="flex-1 py-3" onclick="showTab('stock')">Lager</button>
-<button id="b2" class="flex-1 py-3" onclick="showTab('sales')">Verkäufe</button>
-<button id="b3" class="flex-1 py-3" onclick="showTab('exp')">Ausgaben</button>
-<button id="b4" class="flex-1 py-3" onclick="showTab('dash')">Übersicht</button>
-</div>
+    <!-- LAGER -->
+    <section id="tab-stock" class="space-y-4">
+      <div class="flex gap-2">
+        <button id="addStockBtn" class="flex-1 bg-black text-white py-3 rounded-xl" type="button">+ Lagerartikel</button>
 
-<div id="stock" class="space-y-4"></div>
-<div id="sales" class="hidden space-y-4"></div>
-<div id="exp" class="hidden space-y-4"></div>
-<div id="dash" class="hidden space-y-4"></div>
+        <input id="pdfInput" type="file" accept="application/pdf" class="hidden" />
+        <button id="pdfBtn" class="bg-blue-600 text-white px-4 py-3 rounded-xl" type="button">PDF</button>
+      </div>
 
-</div>
+      <div class="text-xs text-gray-500">
+        PDF Import ist optimiert für deine Tabelle (Artikelnummer / Datum / Artikel / Verkäufer / Kaufpreis).  [oai_citation:1‡Press A to buy.pdf](sediment://file_00000000d56072469688630491330bd3)
+      </div>
+
+      <div id="stockList" class="space-y-4"></div>
+    </section>
+
+    <!-- VERKÄUFE -->
+    <section id="tab-sales" class="hidden space-y-4">
+      <button id="addSaleBtn" class="w-full bg-black text-white py-3 rounded-xl" type="button">+ Verkauf</button>
+      <div id="saleList" class="space-y-4"></div>
+    </section>
+
+    <!-- AUSGABEN -->
+    <section id="tab-exp" class="hidden space-y-4">
+      <button id="addExpBtn" class="w-full bg-black text-white py-3 rounded-xl" type="button">+ Ausgabe</button>
+      <div id="expList" class="space-y-4"></div>
+    </section>
+
+    <!-- ÜBERSICHT -->
+    <section id="tab-dash" class="hidden space-y-4">
+      <div class="bg-white p-4 rounded-2xl shadow">
+        <div class="text-gray-500">Gewinn gesamt</div>
+        <div id="dashProfit" class="text-2xl font-bold">0 €</div>
+      </div>
+
+      <div class="bg-yellow-100 p-4 rounded-2xl shadow">
+        <div class="text-gray-500">40% Rücklage (Anzeige)</div>
+        <div id="dashTax" class="text-xl font-bold">0 €</div>
+      </div>
+
+      <div class="bg-green-100 p-4 rounded-2xl shadow">
+        <div class="text-gray-500">Netto (Anzeige)</div>
+        <div id="dashNet" class="text-2xl font-bold">0 €</div>
+      </div>
+
+      <div class="bg-white p-4 rounded-2xl shadow">
+        <div class="text-gray-500">Lagerwert (EK * Bestand)</div>
+        <div id="dashStockValue" class="text-xl font-bold">0 €</div>
+      </div>
+
+      <div class="text-xs text-gray-500">
+        Hinweis: Die 40% sind deine Spar-Rücklage, keine echte Steuerberechnung.
+      </div>
+    </section>
+  </div>
 
 <script>
-const KEY="kleingewerbe_final_v2";
-let state=JSON.parse(localStorage.getItem(KEY)||'{"stock":[],"sales":[],"exp":[]}');
+/* =======================
+   Daten + Helfer
+======================= */
+const STORAGE_KEY = "wawi_local_v1";
 
-function save(){localStorage.setItem(KEY,JSON.stringify(state));}
-function euro(n){return (n||0).toLocaleString("de-DE",{style:"currency",currency:"EUR"});}
-function num(v){return parseFloat((v||"0").toString().replace(",", "."))||0;}
-function id(){return crypto.randomUUID();}
+let state = loadState() || {
+  stock: [],   // {id, name, ek, qty, active, edit}
+  sales: [],   // {id, date, itemId, qty, sell, shipCustomer, fees, shipCost}
+  expenses: [] // {id, date, title, amount}
+};
 
-function showTab(t){
-["stock","sales","exp","dash"].forEach(x=>document.getElementById(x).classList.add("hidden"));
-document.getElementById(t).classList.remove("hidden");
-render();
+function loadState(){
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch { return null; }
+}
+function saveState(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-/* ---------------- AUTO FEES ---------------- */
-
-function autoFees(s){
-const sell=num(s.sell);
-const shipC=num(s.shipC);
-if(!sell && !shipC){s.fees="";return;}
-const calc=(sell+shipC)*0.10+0.42;
-s.fees=calc.toFixed(2);
+function uid(){
+  return (crypto?.randomUUID?.() || (Date.now().toString(36)+Math.random().toString(36).slice(2)));
+}
+function today(){
+  const d = new Date();
+  const p = x => String(x).padStart(2,"0");
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
 }
 
-/* ---------------- PROFIT ---------------- */
-
-function profit(s){
-return (num(s.sell)+num(s.shipC))
--(num(s.ek)*num(s.qty))
--num(s.fees)
--num(s.ship);
+function euro(n){
+  return (Number(n||0)).toLocaleString("de-DE",{style:"currency",currency:"EUR"});
 }
 
-/* ---------------- LAGER ---------------- */
-
-function addStock(){
-state.stock.push({id:id(),name:"",ek:"",qty:"1",edit:true,active:true});
-save();render();
+/* robust: "1.234,56" / "123,45" / "123.45" */
+function num(v){
+  if(v===null || v===undefined) return 0;
+  let s = String(v).trim();
+  if(!s) return 0;
+  s = s.replace(/\s+/g,"");
+  const lc = s.lastIndexOf(",");
+  const ld = s.lastIndexOf(".");
+  if(lc !== -1 && ld !== -1){
+    if(lc > ld) s = s.replace(/\./g,"").replace(",",".");
+    else s = s.replace(/,/g,"");
+  } else {
+    s = s.replace(/\./g,"").replace(",",".");
+  }
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : 0;
 }
 
-function toggleEdit(i){
-state.stock[i].edit=!state.stock[i].edit;
-save();render();
+function esc(s){
+  return String(s ?? "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;");
 }
 
-function delStock(i){
-const used=state.sales.some(s=>s.itemId===state.stock[i].id);
-if(used){
-alert("Artikel wurde verkauft und wird deaktiviert.");
-state.stock[i].active=false;
-}else{
-state.stock.splice(i,1);
-}
-save();render();
-}
+/* =======================
+   Tabs
+======================= */
+const tabs = ["stock","sales","exp","dash"];
+let currentTab = "stock";
 
-/* ---------------- SALES ---------------- */
-
-function addSale(){
-state.sales.push({id:id(),itemId:"",qty:"1",sell:"",shipC:"",ek:"",fees:"",ship:""});
-save();render();
-}
-
-function updateSale(i,field,value){
-let s=state.sales[i];
-s[field]=value;
-
-if(field==="sell"||field==="shipC"){
-autoFees(s);
+function showTab(name){
+  currentTab = name;
+  tabs.forEach(t=>{
+    document.getElementById("tab-"+t).classList.toggle("hidden", t!==name);
+  });
+  ["btnStock","btnSales","btnExp","btnDash"].forEach(id=>{
+    document.getElementById(id).classList.remove("bg-black","text-white");
+  });
+  const map = {stock:"btnStock", sales:"btnSales", exp:"btnExp", dash:"btnDash"};
+  document.getElementById(map[name]).classList.add("bg-black","text-white");
+  updateDashboard();
 }
 
-save();
-render();
+document.getElementById("btnStock").addEventListener("click", ()=>showTab("stock"));
+document.getElementById("btnSales").addEventListener("click", ()=>showTab("sales"));
+document.getElementById("btnExp").addEventListener("click", ()=>showTab("exp"));
+document.getElementById("btnDash").addEventListener("click", ()=>showTab("dash"));
+
+/* =======================
+   Gebühren + Gewinn
+   Gebühren auto: 10% + 0,42
+======================= */
+function calcAutoFees(sale){
+  const base = num(sale.sell) + num(sale.shipCustomer);
+  if(base <= 0) return 0;
+  return base * 0.10 + 0.42;
 }
 
-/* ---------------- EXP ---------------- */
+function saleProfit(sale){
+  const qty = Math.max(0, num(sale.qty) || 0);
+  const sell = num(sale.sell);
+  const shipCustomer = num(sale.shipCustomer);
+  const fees = num(sale.fees);
+  const shipCost = num(sale.shipCost);
 
-function addExp(){
-state.exp.push({id:id(),title:"",amount:""});
-save();render();
+  // EK aus Lager (pro Stück)
+  const item = state.stock.find(x=>x.id===sale.itemId);
+  const ek = item ? num(item.ek) : 0;
+
+  return (sell + shipCustomer) - (ek * qty) - fees - shipCost;
 }
 
-/* ---------------- RENDER ---------------- */
-
-function render(){
-
-/* LAGER */
-document.getElementById("stock").innerHTML=
-`<button class="w-full bg-black text-white py-3 rounded-xl" onclick="addStock()">+ Lagerartikel</button>`+
-state.stock.map((s,i)=>`
-<div class="bg-white p-4 rounded-2xl shadow space-y-2">
-<div class="flex justify-between">
-<b>${s.name||"Ohne Name"}</b>
-<div class="flex gap-2">
-<button class="text-xs bg-black text-white px-3 py-2 rounded-xl" onclick="toggleEdit(${i})">${s.edit?"Fertig":"Bearbeiten"}</button>
-<button class="text-xs bg-red-600 text-white px-3 py-2 rounded-xl" onclick="delStock(${i})">Löschen</button>
-</div>
-</div>
-${s.edit?`
-<input class="w-full border p-2 rounded-xl" placeholder="Name" value="${s.name}" oninput="state.stock[${i}].name=this.value;save();">
-<input class="w-full border p-2 rounded-xl" placeholder="EK pro Stück" value="${s.ek}" oninput="state.stock[${i}].ek=this.value;save();">
-<input class="w-full border p-2 rounded-xl" placeholder="Bestand" value="${s.qty}" oninput="state.stock[${i}].qty=this.value;save();">
-`:""}
-<div class="text-xs text-gray-500">Bestand: ${s.qty} • EK: ${euro(num(s.ek))} ${s.active===false?"• Deaktiviert":""}</div>
-</div>`).join("");
-
-/* SALES */
-document.getElementById("sales").innerHTML=
-`<button class="w-full bg-black text-white py-3 rounded-xl" onclick="addSale()">+ Verkauf</button>`+
-state.sales.map((s,i)=>`
-<div class="bg-white p-4 rounded-2xl shadow space-y-2">
-<select class="w-full border p-2 rounded-xl"
-onchange="state.sales[${i}].itemId=this.value;
-let it=state.stock.find(x=>x.id==this.value);
-if(it){state.sales[${i}].ek=it.ek;}
-save();render();">
-<option value="">Artikel wählen</option>
-${state.stock.filter(x=>x.active!==false).map(x=>`
-<option value="${x.id}" ${x.id===s.itemId?"selected":""}>${x.name} • Bestand ${x.qty}</option>`).join("")}
-</select>
-
-<input class="w-full border p-2 rounded-xl" placeholder="Menge"
-value="${s.qty}" oninput="updateSale(${i},'qty',this.value)">
-
-<input class="w-full border p-2 rounded-xl" placeholder="Verkaufspreis"
-value="${s.sell}" oninput="updateSale(${i},'sell',this.value)">
-
-<input class="w-full border p-2 rounded-xl" placeholder="Versand vom Kunden"
-value="${s.shipC}" oninput="updateSale(${i},'shipC',this.value)">
-
-<input class="w-full border p-2 rounded-xl" placeholder="Gebühren (auto 10% + 0,42€)"
-value="${s.fees}" oninput="updateSale(${i},'fees',this.value)">
-
-<input class="w-full border p-2 rounded-xl" placeholder="Versandkosten"
-value="${s.ship}" oninput="updateSale(${i},'ship',this.value)">
-
-<div class="text-sm">
-Gewinn: <b>${euro(profit(s))}</b><br>
-40% Rücklage: <b>${euro(profit(s)*0.4)}</b><br>
-Netto: <b>${euro(profit(s)*0.6)}</b>
-</div>
-
-<button class="w-full bg-red-600 text-white py-2 rounded-xl"
-onclick="state.sales.splice(${i},1);save();render()">Löschen</button>
-</div>`).join("");
-
-/* EXP */
-document.getElementById("exp").innerHTML=
-`<button class="w-full bg-black text-white py-3 rounded-xl" onclick="addExp()">+ Ausgabe</button>`+
-state.exp.map((e,i)=>`
-<div class="bg-white p-4 rounded-2xl shadow space-y-2">
-<input class="w-full border p-2 rounded-xl" placeholder="Beschreibung"
-value="${e.title}" oninput="state.exp[${i}].title=this.value;save();">
-<input class="w-full border p-2 rounded-xl" placeholder="Betrag"
-value="${e.amount}" oninput="state.exp[${i}].amount=this.value;save();">
-<button class="w-full bg-red-600 text-white py-2 rounded-xl"
-onclick="state.exp.splice(${i},1);save();render()">Löschen</button>
-</div>`).join("");
-
-/* DASH */
-let salesProfit=state.sales.reduce((a,s)=>a+profit(s),0);
-let expenses=state.exp.reduce((a,e)=>a+num(e.amount),0);
-let total=salesProfit-expenses;
-let stockValue=state.stock.reduce((a,s)=>a+(num(s.ek)*num(s.qty)),0);
-
-document.getElementById("dash").innerHTML=`
-<div class="bg-white p-4 rounded-2xl shadow">
-Gewinn: <b>${euro(total)}</b>
-</div>
-<div class="bg-yellow-100 p-4 rounded-2xl shadow">
-40% Rücklage: <b>${euro(total*0.4)}</b>
-</div>
-<div class="bg-green-100 p-4 rounded-2xl shadow">
-Netto: <b>${euro(total*0.6)}</b>
-</div>
-<div class="bg-white p-4 rounded-2xl shadow">
-Lagerwert: <b>${euro(stockValue)}</b>
-</div>`;
+/* =======================
+   Render (nur bei Add/Del/Import)
+   -> KEIN Re-Render bei jedem Tippen
+======================= */
+function renderAll(){
+  renderStock();
+  renderSales();
+  renderExpenses();
+  updateDashboard();
 }
 
+/* =======================
+   Lager
+======================= */
+document.getElementById("addStockBtn").addEventListener("click", ()=>{
+  state.stock.unshift({ id: uid(), name:"", ek:"", qty:"1", active:true, edit:true });
+  saveState();
+  renderStock();
+});
+
+function toggleStockEdit(id){
+  const it = state.stock.find(x=>x.id===id);
+  if(!it) return;
+  it.edit = !it.edit;
+  saveState();
+  renderStock();
+}
+
+function delOrDeactivateStock(id){
+  const used = state.sales.some(s=>s.itemId === id);
+  const it = state.stock.find(x=>x.id===id);
+  if(!it) return;
+
+  if(used){
+    if(confirm("Dieser Artikel wurde bereits verkauft.\n\nStatt löschen wird er deaktiviert (nicht mehr im Dropdown).\nFortfahren?")){
+      it.active = false;
+      it.edit = false;
+      saveState();
+      renderAll();
+    }
+  } else {
+    if(confirm("Artikel wirklich löschen?")){
+      state.stock = state.stock.filter(x=>x.id!==id);
+      saveState();
+      renderAll();
+    }
+  }
+}
+
+function stockOptionsHtml(selectedId){
+  const opts = [`<option value="">Bitte wählen…</option>`];
+
+  for(const it of state.stock){
+    const isSelected = it.id === selectedId;
+    const isActive = it.active !== false;
+
+    // deaktivierte nur anzeigen, wenn in bestehendem Verkauf ausgewählt
+    if(!isActive && !isSelected) continue;
+
+    const q = num(it.qty)||0;
+    const label = `${it.name || "(ohne Name)"} • Bestand: ${q}` + (isActive ? "" : " (deaktiviert)");
+    opts.push(`<option value="${it.id}" ${isSelected ? "selected":""}>${esc(label)}</option>`);
+  }
+  return opts.join("");
+}
+
+function renderStock(){
+  const wrap = document.getElementById("stockList");
+  wrap.innerHTML = "";
+
+  for(const it of state.stock){
+    const qty = num(it.qty)||0;
+    const ek = num(it.ek)||0;
+
+    wrap.insertAdjacentHTML("beforeend", `
+      <div class="bg-white p-4 rounded-2xl shadow space-y-3" data-stock-id="${it.id}">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <div class="font-semibold truncate">${esc(it.name || "Ohne Name")}</div>
+            <div class="text-xs text-gray-500">
+              Bestand: <b>${qty}</b> • EK/Stk: <b>${euro(ek)}</b>
+              ${it.active===false ? `<span class="text-red-600"> • Deaktiviert</span>` : ""}
+            </div>
+          </div>
+
+          <div class="flex gap-2 shrink-0">
+            <button type="button"
+              class="text-xs px-3 py-2 rounded-xl ${it.edit ? "bg-gray-200" : "bg-black text-white"}"
+              onclick="toggleStockEdit('${it.id}')">
+              ${it.edit ? "Fertig" : "Bearbeiten"}
+            </button>
+
+            <button type="button"
+              class="text-xs bg-red-600 text-white px-3 py-2 rounded-xl"
+              onclick="delOrDeactivateStock('${it.id}')">
+              Löschen
+            </button>
+          </div>
+        </div>
+
+        ${it.edit ? `
+        <div class="space-y-2">
+          <input class="w-full border p-2 rounded-xl" placeholder="Artikelname"
+            value="${esc(it.name)}"
+            data-field="name">
+
+          <div class="grid grid-cols-2 gap-2">
+            <input inputmode="decimal" class="w-full border p-2 rounded-xl" placeholder="EK pro Stück"
+              value="${esc(it.ek)}"
+              data-field="ek">
+            <input inputmode="numeric" class="w-full border p-2 rounded-xl" placeholder="Bestand"
+              value="${esc(it.qty)}"
+              data-field="qty">
+          </div>
+        </div>
+        ` : ``}
+      </div>
+    `);
+  }
+
+  // Input-Listener NUR setzen (kein render beim Tippen)
+  wrap.querySelectorAll("[data-stock-id] input[data-field]").forEach(inp=>{
+    inp.addEventListener("input", (e)=>{
+      const card = e.target.closest("[data-stock-id]");
+      const id = card.getAttribute("data-stock-id");
+      const field = e.target.getAttribute("data-field");
+      const it = state.stock.find(x=>x.id===id);
+      if(!it) return;
+      it[field] = e.target.value;
+      saveState();
+      // Dashboard darf live aktualisieren
+      updateDashboard();
+      // Wenn Lagername geändert wurde, dropdown labels ändern -> wir lassen es erst beim nächsten Render (oder Tabwechsel)
+    });
+  });
+}
+
+/* =======================
+   Verkäufe
+======================= */
+document.getElementById("addSaleBtn").addEventListener("click", ()=>{
+  state.sales.unshift({
+    id: uid(),
+    date: today(),
+    itemId: "",
+    qty: "1",
+    sell: "",
+    shipCustomer: "",
+    fees: "",
+    shipCost: ""
+  });
+  saveState();
+  renderSales();
+});
+
+function deleteSale(id){
+  if(!confirm("Verkauf löschen?")) return;
+  state.sales = state.sales.filter(x=>x.id!==id);
+  saveState();
+  renderAll();
+}
+
+function renderSales(){
+  const wrap = document.getElementById("saleList");
+  wrap.innerHTML = "";
+
+  for(const s of state.sales){
+    const p = saleProfit(s);
+    const tax = p>0 ? p*0.4 : 0;
+    const net = p - tax;
+
+    wrap.insertAdjacentHTML("beforeend", `
+      <div class="bg-white p-4 rounded-2xl shadow space-y-3" data-sale-id="${s.id}">
+        <div class="flex items-center justify-between">
+          <div class="text-sm font-semibold">Verkauf</div>
+          <button type="button" class="text-xs bg-red-600 text-white px-3 py-2 rounded-xl"
+            onclick="deleteSale('${s.id}')">Löschen</button>
+        </div>
+
+        <input type="date" class="w-full border p-2 rounded-xl" value="${esc(s.date)}" data-field="date">
+
+        <select class="w-full border p-2 rounded-xl" data-field="itemId">
+          ${stockOptionsHtml(s.itemId)}
+        </select>
+
+        <div class="grid grid-cols-2 gap-2">
+          <input inputmode="numeric" class="w-full border p-2 rounded-xl" placeholder="Menge"
+            value="${esc(s.qty)}" data-field="qty">
+
+          <input inputmode="decimal" class="w-full border p-2 rounded-xl" placeholder="Verkauf (ohne Versand)"
+            value="${esc(s.sell)}" data-field="sell">
+
+          <input inputmode="decimal" class="w-full border p-2 rounded-xl" placeholder="Versand vom Kunden"
+            value="${esc(s.shipCustomer)}" data-field="shipCustomer">
+
+          <input inputmode="decimal" class="w-full border p-2 rounded-xl" placeholder="Gebühren (auto 10% + 0,42)"
+            value="${esc(s.fees)}" data-field="fees">
+
+          <input inputmode="decimal" class="w-full border p-2 rounded-xl col-span-2" placeholder="Versandkosten (deine)"
+            value="${esc(s.shipCost)}" data-field="shipCost">
+        </div>
+
+        <div class="text-sm space-y-1">
+          <div>Gewinn: <b data-out="profit">${euro(p)}</b></div>
+          <div>40% Rücklage: <b data-out="tax">${euro(tax)}</b></div>
+          <div>Netto (Anzeige): <b data-out="net">${euro(net)}</b></div>
+        </div>
+      </div>
+    `);
+  }
+
+  // Listener: speichern ohne render
+  wrap.querySelectorAll("[data-sale-id]").forEach(card=>{
+    const id = card.getAttribute("data-sale-id");
+    const sale = state.sales.find(x=>x.id===id);
+    if(!sale) return;
+
+    const outProfit = card.querySelector('[data-out="profit"]');
+    const outTax = card.querySelector('[data-out="tax"]');
+    const outNet = card.querySelector('[data-out="net"]');
+
+    // date
+    card.querySelectorAll("input[data-field], select[data-field]").forEach(el=>{
+      el.addEventListener("input", ()=>handleSaleChange(id, el));
+      el.addEventListener("change", ()=>handleSaleChange(id, el));
+    });
+
+    function refreshComputed(){
+      const p = saleProfit(sale);
+      const tax = p>0 ? p*0.4 : 0;
+      const net = p - tax;
+      outProfit.textContent = euro(p);
+      outTax.textContent = euro(tax);
+      outNet.textContent = euro(net);
+      updateDashboard();
+    }
+
+    // initial compute refresh not needed
+    refreshComputed();
+  });
+}
+
+function handleSaleChange(id, el){
+  const sale = state.sales.find(x=>x.id===id);
+  if(!sale) return;
+
+  const field = el.getAttribute("data-field");
+  const value = el.value;
+
+  // Artikel gewählt
+  if(field === "itemId"){
+    sale.itemId = value;
+    saveState();
+    // Gebühren evtl. neu
+    const auto = calcAutoFees(sale);
+    if(auto > 0) sale.fees = auto.toFixed(2);
+    saveState();
+    // Dropdowns können sich ändern, aber wir rendern NICHT live -> ok
+  } else {
+    sale[field] = value;
+
+    // Auto-Gebühren wenn sell oder shipCustomer geändert
+    if(field === "sell" || field === "shipCustomer"){
+      const auto = calcAutoFees(sale);
+      sale.fees = auto > 0 ? auto.toFixed(2) : "";
+    }
+    saveState();
+  }
+
+  // Update nur diese Karte & Dashboard
+  // (wir nutzen direkt die bestehende DOM-Karte: Rechenwerte werden neu gesetzt durch renderSales()-Listener refreshComputed)
+  // Schnell: recompute anhand aktueller Karte:
+  const card = el.closest("[data-sale-id]");
+  if(card){
+    const p = saleProfit(sale);
+    const tax = p>0 ? p*0.4 : 0;
+    const net = p - tax;
+    card.querySelector('[data-out="profit"]').textContent = euro(p);
+    card.querySelector('[data-out="tax"]').textContent = euro(tax);
+    card.querySelector('[data-out="net"]').textContent = euro(net);
+  }
+  updateDashboard();
+}
+
+/* =======================
+   Ausgaben
+======================= */
+document.getElementById("addExpBtn").addEventListener("click", ()=>{
+  state.expenses.unshift({ id: uid(), date: today(), title:"", amount:"" });
+  saveState();
+  renderExpenses();
+});
+
+function deleteExpense(id){
+  if(!confirm("Ausgabe löschen?")) return;
+  state.expenses = state.expenses.filter(x=>x.id!==id);
+  saveState();
+  renderAll();
+}
+
+function renderExpenses(){
+  const wrap = document.getElementById("expList");
+  wrap.innerHTML = "";
+
+  for(const e of state.expenses){
+    wrap.insertAdjacentHTML("beforeend", `
+      <div class="bg-white p-4 rounded-2xl shadow space-y-3" data-exp-id="${e.id}">
+        <div class="flex items-center justify-between">
+          <div class="text-sm font-semibold">Ausgabe</div>
+          <button type="button" class="text-xs bg-red-600 text-white px-3 py-2 rounded-xl"
+            onclick="deleteExpense('${e.id}')">Löschen</button>
+        </div>
+
+        <input type="date" class="w-full border p-2 rounded-xl" value="${esc(e.date)}" data-field="date">
+        <input class="w-full border p-2 rounded-xl" placeholder="Beschreibung" value="${esc(e.title)}" data-field="title">
+        <input inputmode="decimal" class="w-full border p-2 rounded-xl" placeholder="Betrag (€)" value="${esc(e.amount)}" data-field="amount">
+      </div>
+    `);
+  }
+
+  wrap.querySelectorAll("[data-exp-id] input[data-field]").forEach(inp=>{
+    inp.addEventListener("input", (ev)=>{
+      const card = ev.target.closest("[data-exp-id]");
+      const id = card.getAttribute("data-exp-id");
+      const field = ev.target.getAttribute("data-field");
+      const e = state.expenses.find(x=>x.id===id);
+      if(!e) return;
+      e[field] = ev.target.value;
+      saveState();
+      updateDashboard();
+    });
+  });
+}
+
+/* =======================
+   Dashboard
+======================= */
+function updateDashboard(){
+  // Gewinn = Summe Verkäufe - Ausgaben
+  let salesProfit = 0;
+  for(const s of state.sales) salesProfit += saleProfit(s);
+
+  let expSum = 0;
+  for(const e of state.expenses) expSum += num(e.amount);
+
+  const profit = salesProfit - expSum;
+  const tax = profit>0 ? profit*0.4 : 0;
+  const net = profit - tax;
+
+  let stockValue = 0;
+  for(const it of state.stock){
+    stockValue += num(it.ek) * num(it.qty);
+  }
+
+  document.getElementById("dashProfit").textContent = euro(profit);
+  document.getElementById("dashTax").textContent = euro(tax);
+  document.getElementById("dashNet").textContent = euro(net);
+  document.getElementById("dashStockValue").textContent = euro(stockValue);
+}
+
+/* =======================
+   PDF Import (dein Format)
+   Tabelle: Artikelnummer | Datum | Artikel/Beschreibung | Verkäufer/Plattform | Kaufpreis
+======================= */
+document.getElementById("pdfBtn").addEventListener("click", ()=>{
+  document.getElementById("pdfInput").click();
+});
+
+document.getElementById("pdfInput").addEventListener("change", async (e)=>{
+  const file = e.target.files?.[0];
+  if(!file) return;
+
+  try{
+    const text = await pdfToText(file);
+    const imported = parsePressAToBuy(text);
+
+    if(imported.length === 0){
+      alert("Keine Artikel erkannt. (Parser erwartet: Nummer Datum Artikel Verkäufer Preis)");
+      return;
+    }
+
+    importToStock(imported);
+    saveState();
+    renderAll();
+
+    alert(`Import fertig: ${imported.length} Zeilen erkannt → Lager aktualisiert.`);
+  } catch(err){
+    console.error(err);
+    alert("PDF Import fehlgeschlagen. Wenn du willst, schick mir ein Beispiel-PDF erneut.");
+  } finally {
+    // damit erneutes Importieren derselben Datei möglich ist
+    e.target.value = "";
+  }
+});
+
+async function pdfToText(file){
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data: new Uint8Array(buf)}).promise;
+
+  let full = "";
+  for(let p=1; p<=pdf.numPages; p++){
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    full += content.items.map(i=>i.str).join(" ") + "\n";
+  }
+  return full;
+}
+
+/*
+  Beispielzeilen aus deinem PDF:
+  1 11. Jan N3DS XL Black Vinted/houdouby 198,89
+  17 11. Feb PSP 2004 Black Vinted/giandox 22,2
+*/
+function parsePressAToBuy(text){
+  const lines = text
+    .split("\n")
+    .map(l=>l.trim())
+    .filter(Boolean);
+
+  const out = [];
+
+  // Regex: nr + datum + artikel + seller/plattform + preis
+  // datum: "11. Jan" / "01. Feb"
+  const rowRe = /^(\d+)\s+(\d{1,2}\.\s*[A-Za-zÄÖÜäöü]{3,})\s+(.+?)\s+([A-Za-z]+\/[^\s]+)\s+(\d+(?:,\d+)?|\d+)$/;
+
+  for(const line of lines){
+    // Skip header
+    if(line.startsWith("Artikelnummer")) continue;
+    if(line.startsWith("Zahlungsart")) continue;
+
+    const m = line.match(rowRe);
+    if(!m) continue;
+
+    const nr = m[1];
+    const dateShort = m[2];         // "11. Jan"
+    const name = m[3].trim();       // Artikel/Beschreibung
+    const seller = m[4].trim();     // "Vinted/..."
+    const price = m[5].trim();      // "198,89" oder "22,2"
+
+    out.push({
+      sourceRow: nr,
+      purchaseDate: dateShort,
+      name,
+      seller,
+      ek: price
+    });
+  }
+  return out;
+}
+
+function importToStock(items){
+  // gleiche Artikel zusammenfassen (Name exakt)
+  for(const it of items){
+    const name = it.name;
+    const ek = it.ek;
+
+    let existing = state.stock.find(s => (s.name || "").trim() === name.trim());
+
+    if(existing){
+      // Menge +1
+      existing.qty = String((num(existing.qty)||0) + 1);
+      // EK: wir lassen den bestehenden EK (oder du kannst hier den letzten überschreiben)
+      if(!existing.ek) existing.ek = ek;
+    } else {
+      state.stock.unshift({
+        id: uid(),
+        name,
+        ek,       // EK aus PDF
+        qty: "1",
+        active: true,
+        edit: false
+      });
+    }
+  }
+}
+
+/* =======================
+   Start
+======================= */
+renderAll();
 showTab("stock");
 </script>
 </body>
