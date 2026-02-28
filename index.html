@@ -1,269 +1,166 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kleingewerbe Pro Ultimate</title>
-
-<style>
-body{font-family:Arial;background:#f2f2f2;margin:0}
-.nav{display:flex;background:#000}
-.nav button{flex:1;padding:12px;border:none;background:#000;color:#fff;font-size:12px}
-.section{display:none;padding:15px}
-.active{display:block}
-.card{background:#fff;padding:15px;border-radius:12px;margin-bottom:15px}
-input,select{width:100%;padding:10px;margin:5px 0}
-button{padding:10px;border:none;border-radius:8px;margin-top:5px}
-.btn{background:#000;color:#fff;width:100%}
-.btnDanger{background:#c62828;color:#fff}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
-.sold{color:gray;text-decoration:line-through}
-.right{text-align:right}
-.bold{font-weight:bold}
-</style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kleingewerbe Pro</title>
+<script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
 
-<div class="nav">
-<button onclick="showTab('dash')">📊 Übersicht</button>
-<button onclick="showTab('lager')">📦 Lager</button>
-<button onclick="showTab('verkauf')">💰 Verkauf</button>
-<button onclick="showTab('ausgaben')">💸 Ausgaben</button>
-<button onclick="showTab('backup')">💾 Backup</button>
-</div>
+<body class="bg-gray-100">
+<div class="max-w-xl mx-auto p-4 space-y-5">
 
-<div id="dash" class="section active">
-<div class="card">
-<h2>Übersicht & EÜR</h2>
-<div id="overview"></div>
-</div>
+<h1 class="text-2xl font-bold text-center">Kleingewerbe Manager</h1>
+
+<div class="flex bg-white rounded-xl shadow overflow-hidden">
+<button id="b1" class="flex-1 py-3" onclick="tab('stock')">Lager</button>
+<button id="b2" class="flex-1 py-3" onclick="tab('sales')">Verkäufe</button>
+<button id="b3" class="flex-1 py-3" onclick="tab('exp')">Ausgaben</button>
+<button id="b4" class="flex-1 py-3" onclick="tab('dash')">Übersicht</button>
 </div>
 
-<div id="lager" class="section">
-<div class="card">
-<h2>Artikel hinzufügen</h2>
-<input id="l_name" placeholder="Artikelname">
-<input id="l_ek" placeholder="EK €">
-<input id="l_platform" placeholder="Plattform">
-<input id="l_date" type="date">
-<input id="l_pay" placeholder="Bezahlart">
-<button class="btn" onclick="addItem()">Speichern</button>
-</div>
+<div id="stock" class="space-y-4"></div>
+<div id="sales" class="hidden space-y-4"></div>
+<div id="exp" class="hidden space-y-4"></div>
+<div id="dash" class="hidden space-y-4"></div>
 
-<div class="card">
-<h2>Lagerbestand</h2>
-<div id="lagerTable"></div>
-</div>
-</div>
-
-<div id="verkauf" class="section">
-<div class="card">
-<h2>Verkaufen</h2>
-<select id="v_item"></select>
-<input id="v_price" placeholder="Verkaufspreis €">
-<input id="v_ship" placeholder="Versand €">
-<input id="v_other" placeholder="Sonstige Kosten €">
-<input id="v_percent" placeholder="eBay % (Standard 10)" value="10">
-<input id="v_fix" placeholder="Fixgebühr € (Standard 0,42)" value="0,42">
-<button class="btn" onclick="sellItem()">Verkaufen</button>
-<div id="saleResult"></div>
-</div>
-
-<div class="card">
-<h2>Verkäufe</h2>
-<div id="salesTable"></div>
-</div>
-</div>
-
-<div id="ausgaben" class="section">
-<div class="card">
-<h2>Ausgabe erfassen</h2>
-<input id="e_date" type="date">
-<input id="e_cat" placeholder="Kategorie">
-<input id="e_amount" placeholder="Betrag €">
-<button class="btn" onclick="addExpense()">Speichern</button>
-</div>
-<div class="card">
-<h2>Ausgabenliste</h2>
-<div id="expenseTable"></div>
-</div>
-</div>
-
-<div id="backup" class="section">
-<div class="card">
-<h2>Backup</h2>
-<button class="btn" onclick="downloadBackup()">Backup erstellen</button>
-<input type="file" id="restoreFile">
-<button class="btn" onclick="restoreBackup()">Wiederherstellen</button>
-</div>
 </div>
 
 <script>
-function showTab(id){
-document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
-document.getElementById(id).classList.add("active");
+const KEY="kleingewerbe_final";
+let state=JSON.parse(localStorage.getItem(KEY)||'{"stock":[],"sales":[],"exp":[]}');
+
+function save(){localStorage.setItem(KEY,JSON.stringify(state));}
+function euro(n){return (n||0).toLocaleString("de-DE",{style:"currency",currency:"EUR"});}
+function num(v){return parseFloat((v||"0").toString().replace(",", "."))||0;}
+function id(){return crypto.randomUUID();}
+
+function tab(t){
+["stock","sales","exp","dash"].forEach(x=>document.getElementById(x).classList.add("hidden"));
+document.getElementById(t).classList.remove("hidden");
+render();
 }
 
-function parse(n){return parseFloat(String(n).replace(",", "."))||0}
-function money(n){return n.toFixed(2).replace(".", ",")}
+/* ---------- LAGER ---------- */
 
-let inv=JSON.parse(localStorage.getItem("inv"))||[];
-let sales=JSON.parse(localStorage.getItem("sales"))||[];
-let exp=JSON.parse(localStorage.getItem("exp"))||[];
-
-function save(){
-localStorage.setItem("inv",JSON.stringify(inv));
-localStorage.setItem("sales",JSON.stringify(sales));
-localStorage.setItem("exp",JSON.stringify(exp));
-renderAll();
+function addStock(){
+state.stock.push({id:id(),name:"",ek:"",qty:"1",edit:true,active:true});
+save();render();
 }
 
-function addItem(){
-inv.push({
-id:Date.now(),
-name:l_name.value,
-ek:parse(l_ek.value),
-platform:l_platform.value,
-date:l_date.value,
-pay:l_pay.value,
-sold:false
-});
-l_name.value="";l_ek.value="";l_platform.value="";l_date.value="";l_pay.value="";
-save();
+function toggleEdit(i){
+state.stock[i].edit=!state.stock[i].edit;
+save();render();
 }
 
-function sellItem(){
-let item=inv.find(i=>i.id==v_item.value);
-if(!item)return;
-
-let price=parse(v_price.value);
-let ship=parse(v_ship.value);
-let other=parse(v_other.value);
-let percent=parse(v_percent.value)||10;
-let fix=parse(v_fix.value)||0.42;
-
-let ebay=(price*percent/100)+fix;
-let profit=price-item.ek-ebay-ship-other;
-let tax=profit*0.4;
-
-item.sold=true;
-
-sales.push({
-date:new Date().toISOString().slice(0,10),
-name:item.name,
-ek:item.ek,
-price,
-ebay,
-ship,
-other,
-profit,
-tax
-});
-
-v_price.value="";v_ship.value="";v_other.value="";
-save();
-
-saleResult.innerHTML="Gewinn: "+money(profit)+" € | Steuer 40%: "+money(tax)+" €";
+function delStock(i){
+const used=state.sales.some(s=>s.itemId===state.stock[i].id);
+if(used){
+alert("Artikel wurde verkauft und wird deaktiviert.");
+state.stock[i].active=false;
+}else{
+state.stock.splice(i,1);
+}
+save();render();
 }
 
-function addExpense(){
-exp.push({
-date:e_date.value,
-cat:e_cat.value,
-amount:parse(e_amount.value)
-});
-e_date.value="";e_cat.value="";e_amount.value="";
-save();
+/* ---------- VERKÄUFE ---------- */
+
+function addSale(){
+state.sales.push({id:id(),itemId:"",qty:"1",sell:"",shipC:"",ek:"",fees:"",ship:""});
+save();render();
 }
 
-function renderAll(){
-
-let revenue=sales.reduce((s,x)=>s+x.price,0);
-let cogs=sales.reduce((s,x)=>s+x.ek,0);
-let ebay=sales.reduce((s,x)=>s+x.ebay,0);
-let ship=sales.reduce((s,x)=>s+x.ship,0);
-let otherSale=sales.reduce((s,x)=>s+x.other,0);
-let otherExp=exp.reduce((s,x)=>s+x.amount,0);
-let profit=revenue-cogs-ebay-ship-otherSale-otherExp;
-let taxTotal=sales.reduce((s,x)=>s+x.tax,0);
-let inventoryValue=inv.filter(x=>!x.sold).reduce((s,x)=>s+x.ek,0);
-
-overview.innerHTML=`
-Einnahmen: ${money(revenue)} €<br>
-Wareneinsatz: ${money(cogs)} €<br>
-eBay Gebühren: ${money(ebay)} €<br>
-Versand: ${money(ship)} €<br>
-Sonstige Verkaufskosten: ${money(otherSale)} €<br>
-Ausgaben: ${money(otherExp)} €<br><br>
-<b>Jahresüberschuss: ${money(profit)} €</b><br>
-<b>Gesamte Steuer Rücklage (40%): ${money(taxTotal)} €</b><br><br>
-Lagerwert (EK im Lager): ${money(inventoryValue)} €
-`;
-
-v_item.innerHTML=inv.filter(x=>!x.sold).map(x=>`<option value="${x.id}">${x.name}</option>`).join("");
-
-lagerTable.innerHTML=`
-<table>
-<tr><th>Artikel</th><th>EK</th><th>Status</th></tr>
-${inv.map(x=>`
-<tr class="${x.sold?'sold':''}">
-<td>${x.name}</td>
-<td class="right">${money(x.ek)} €</td>
-<td>${x.sold?'Verkauft':'Im Lager'}</td>
-</tr>
-`).join("")}
-</table>
-`;
-
-salesTable.innerHTML=`
-<table>
-<tr><th>Datum</th><th>Artikel</th><th>Gewinn</th><th>40% Steuer</th></tr>
-${sales.map(s=>`
-<tr>
-<td>${s.date}</td>
-<td>${s.name}</td>
-<td class="right">${money(s.profit)} €</td>
-<td class="right">${money(s.tax)} €</td>
-</tr>
-`).join("")}
-</table>
-`;
-
-expenseTable.innerHTML=`
-<table>
-<tr><th>Datum</th><th>Kategorie</th><th>Betrag</th></tr>
-${exp.map(e=>`
-<tr>
-<td>${e.date}</td>
-<td>${e.cat}</td>
-<td class="right">${money(e.amount)} €</td>
-</tr>
-`).join("")}
-</table>
-`;
+function profit(s){
+return (num(s.sell)+num(s.shipC))-(num(s.ek)*num(s.qty))-num(s.fees)-num(s.ship);
 }
 
-function downloadBackup(){
-let blob=new Blob([JSON.stringify({inv,sales,exp})],{type:"application/json"});
-let a=document.createElement("a");
-a.href=URL.createObjectURL(blob);
-a.download="backup.json";
-a.click();
+/* ---------- AUSGABEN ---------- */
+
+function addExp(){
+state.exp.push({id:id(),title:"",amount:""});
+save();render();
 }
 
-function restoreBackup(){
-let f=restoreFile.files[0];
-let r=new FileReader();
-r.onload=function(e){
-let d=JSON.parse(e.target.result);
-inv=d.inv||[];sales=d.sales||[];exp=d.exp||[];
-save();
-};
-r.readAsText(f);
+/* ---------- RENDER ---------- */
+
+function render(){
+
+/* LAGER */
+document.getElementById("stock").innerHTML=
+`<button class="w-full bg-black text-white py-3 rounded-xl" onclick="addStock()">+ Lagerartikel</button>`+
+state.stock.map((s,i)=>`
+<div class="bg-white p-4 rounded-2xl shadow space-y-2">
+<div class="flex justify-between">
+<b>${s.name||"Ohne Name"}</b>
+<div class="flex gap-2">
+<button class="text-xs bg-black text-white px-3 py-2 rounded-xl" onclick="toggleEdit(${i})">${s.edit?"Fertig":"Bearbeiten"}</button>
+<button class="text-xs bg-red-600 text-white px-3 py-2 rounded-xl" onclick="delStock(${i})">Löschen</button>
+</div>
+</div>
+${s.edit?`
+<input class="w-full border p-2 rounded-xl" placeholder="Name" value="${s.name}" oninput="state.stock[${i}].name=this.value;save();render()">
+<input class="w-full border p-2 rounded-xl" placeholder="EK pro Stück" value="${s.ek}" oninput="state.stock[${i}].ek=this.value;save();render()">
+<input class="w-full border p-2 rounded-xl" placeholder="Bestand" value="${s.qty}" oninput="state.stock[${i}].qty=this.value;save();render()">
+`:""}
+<div class="text-xs text-gray-500">Bestand: ${s.qty} • EK: ${euro(num(s.ek))} ${s.active===false?"• Deaktiviert":""}</div>
+</div>`).join("");
+
+/* SALES */
+document.getElementById("sales").innerHTML=
+`<button class="w-full bg-black text-white py-3 rounded-xl" onclick="addSale()">+ Verkauf</button>`+
+state.sales.map((s,i)=>`
+<div class="bg-white p-4 rounded-2xl shadow space-y-2">
+<select class="w-full border p-2 rounded-xl" onchange="state.sales[${i}].itemId=this.value;let it=state.stock.find(x=>x.id==this.value);if(it){state.sales[${i}].ek=it.ek;}save();render()">
+<option value="">Artikel wählen</option>
+${state.stock.filter(x=>x.active!==false).map(x=>`
+<option value="${x.id}" ${x.id===s.itemId?"selected":""}>${x.name} • Bestand ${x.qty}</option>`).join("")}
+</select>
+<input class="w-full border p-2 rounded-xl" placeholder="Menge" value="${s.qty}" oninput="state.sales[${i}].qty=this.value;save();render()">
+<input class="w-full border p-2 rounded-xl" placeholder="Verkaufspreis" value="${s.sell}" oninput="state.sales[${i}].sell=this.value;save();render()">
+<input class="w-full border p-2 rounded-xl" placeholder="Versand vom Kunden" value="${s.shipC}" oninput="state.sales[${i}].shipC=this.value;save();render()">
+<input class="w-full border p-2 rounded-xl" placeholder="Gebühren" value="${s.fees}" oninput="state.sales[${i}].fees=this.value;save();render()">
+<input class="w-full border p-2 rounded-xl" placeholder="Versandkosten" value="${s.ship}" oninput="state.sales[${i}].ship=this.value;save();render()">
+<div class="text-sm">
+Gewinn: <b>${euro(profit(s))}</b><br>
+40% Rücklage: <b>${euro(profit(s)*0.4)}</b><br>
+Netto: <b>${euro(profit(s)*0.6)}</b>
+</div>
+<button class="w-full bg-red-600 text-white py-2 rounded-xl" onclick="state.sales.splice(${i},1);save();render()">Löschen</button>
+</div>`).join("");
+
+/* AUSGABEN */
+document.getElementById("exp").innerHTML=
+`<button class="w-full bg-black text-white py-3 rounded-xl" onclick="addExp()">+ Ausgabe</button>`+
+state.exp.map((e,i)=>`
+<div class="bg-white p-4 rounded-2xl shadow space-y-2">
+<input class="w-full border p-2 rounded-xl" placeholder="Beschreibung" value="${e.title}" oninput="state.exp[${i}].title=this.value;save();render()">
+<input class="w-full border p-2 rounded-xl" placeholder="Betrag" value="${e.amount}" oninput="state.exp[${i}].amount=this.value;save();render()">
+<button class="w-full bg-red-600 text-white py-2 rounded-xl" onclick="state.exp.splice(${i},1);save();render()">Löschen</button>
+</div>`).join("");
+
+/* DASHBOARD */
+let salesProfit=state.sales.reduce((a,s)=>a+profit(s),0);
+let expenses=state.exp.reduce((a,e)=>a+num(e.amount),0);
+let total=salesProfit-expenses;
+let stockValue=state.stock.reduce((a,s)=>a+(num(s.ek)*num(s.qty)),0);
+
+document.getElementById("dash").innerHTML=`
+<div class="bg-white p-4 rounded-2xl shadow">
+Gewinn: <b>${euro(total)}</b>
+</div>
+<div class="bg-yellow-100 p-4 rounded-2xl shadow">
+40% Rücklage: <b>${euro(total*0.4)}</b>
+</div>
+<div class="bg-green-100 p-4 rounded-2xl shadow">
+Netto: <b>${euro(total*0.6)}</b>
+</div>
+<div class="bg-white p-4 rounded-2xl shadow">
+Lagerwert: <b>${euro(stockValue)}</b>
+</div>`;
 }
 
-renderAll();
+tab("stock");
 </script>
 </body>
 </html>
