@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kleingewerbe Pro</title>
+<title>Kleingewerbe Pro Ultimate</title>
+
 <style>
 body{font-family:Arial;background:#f2f2f2;margin:0}
 .nav{display:flex;background:#000}
@@ -11,8 +12,12 @@ body{font-family:Arial;background:#f2f2f2;margin:0}
 .section{display:none;padding:15px}
 .active{display:block}
 .card{background:#fff;padding:15px;border-radius:12px;margin-bottom:15px}
+input,select{width:100%;padding:10px;margin:5px 0}
+button{padding:10px;border:none;border-radius:8px;margin-top:5px}
+.btn{background:#000;color:#fff;width:100%}
+.btnDanger{background:#c62828;color:#fff}
 table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{border-bottom:1px solid #ddd;padding:8px}
+th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
 .sold{color:gray;text-decoration:line-through}
 .right{text-align:right}
 .bold{font-weight:bold}
@@ -21,12 +26,31 @@ th,td{border-bottom:1px solid #ddd;padding:8px}
 <body>
 
 <div class="nav">
+<button onclick="showTab('dash')">📊 Übersicht</button>
 <button onclick="showTab('lager')">📦 Lager</button>
 <button onclick="showTab('verkauf')">💰 Verkauf</button>
-<button onclick="showTab('übersicht')">📊 Übersicht</button>
+<button onclick="showTab('ausgaben')">💸 Ausgaben</button>
+<button onclick="showTab('backup')">💾 Backup</button>
 </div>
 
-<div id="lager" class="section active">
+<div id="dash" class="section active">
+<div class="card">
+<h2>Übersicht & EÜR</h2>
+<div id="overview"></div>
+</div>
+</div>
+
+<div id="lager" class="section">
+<div class="card">
+<h2>Artikel hinzufügen</h2>
+<input id="l_name" placeholder="Artikelname">
+<input id="l_ek" placeholder="EK €">
+<input id="l_platform" placeholder="Plattform">
+<input id="l_date" type="date">
+<input id="l_pay" placeholder="Bezahlart">
+<button class="btn" onclick="addItem()">Speichern</button>
+</div>
+
 <div class="card">
 <h2>Lagerbestand</h2>
 <div id="lagerTable"></div>
@@ -35,23 +59,47 @@ th,td{border-bottom:1px solid #ddd;padding:8px}
 
 <div id="verkauf" class="section">
 <div class="card">
-<h2>Artikel verkaufen</h2>
-<select id="sellSelect"></select>
-<input id="sellPrice" placeholder="Verkaufspreis €">
-<button onclick="sell()">Verkaufen</button>
-<div id="result"></div>
+<h2>Verkaufen</h2>
+<select id="v_item"></select>
+<input id="v_price" placeholder="Verkaufspreis €">
+<input id="v_ship" placeholder="Versand €">
+<input id="v_other" placeholder="Sonstige Kosten €">
+<input id="v_percent" placeholder="eBay % (Standard 10)" value="10">
+<input id="v_fix" placeholder="Fixgebühr € (Standard 0,42)" value="0,42">
+<button class="btn" onclick="sellItem()">Verkaufen</button>
+<div id="saleResult"></div>
+</div>
+
+<div class="card">
+<h2>Verkäufe</h2>
+<div id="salesTable"></div>
 </div>
 </div>
 
-<div id="übersicht" class="section">
+<div id="ausgaben" class="section">
 <div class="card">
-<h2>Übersicht</h2>
-<div id="overview"></div>
+<h2>Ausgabe erfassen</h2>
+<input id="e_date" type="date">
+<input id="e_cat" placeholder="Kategorie">
+<input id="e_amount" placeholder="Betrag €">
+<button class="btn" onclick="addExpense()">Speichern</button>
+</div>
+<div class="card">
+<h2>Ausgabenliste</h2>
+<div id="expenseTable"></div>
+</div>
+</div>
+
+<div id="backup" class="section">
+<div class="card">
+<h2>Backup</h2>
+<button class="btn" onclick="downloadBackup()">Backup erstellen</button>
+<input type="file" id="restoreFile">
+<button class="btn" onclick="restoreBackup()">Wiederherstellen</button>
 </div>
 </div>
 
 <script>
-
 function showTab(id){
 document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
 document.getElementById(id).classList.add("active");
@@ -60,71 +108,162 @@ document.getElementById(id).classList.add("active");
 function parse(n){return parseFloat(String(n).replace(",", "."))||0}
 function money(n){return n.toFixed(2).replace(".", ",")}
 
-let inventory=[
-{id:1,name:"N3DS XL Black",ek:198.89,plattform:"Vinted",sold:false},
-{id:2,name:"N3DS XL Blau",ek:167.39,plattform:"Vinted",sold:false},
-{id:3,name:"3DS Black/Ovp",ek:105.39,plattform:"Vinted",sold:false},
-{id:4,name:"DS i XL Oro",ek:35.83,plattform:"Vinted",sold:false},
-{id:5,name:"N3DS XL Orange/Ovp",ek:217.65,plattform:"Vinted",sold:false},
-{id:6,name:"PSP 2004 Black",ek:55.14,plattform:"Vinted",sold:false},
-{id:7,name:"PS Vita Blau",ek:105.39,plattform:"Vinted",sold:false},
-{id:8,name:"Xbox 360/Ovp",ek:47.64,plattform:"Vinted",sold:false},
-{id:9,name:"GBA SP Silber/Muster",ek:52.89,plattform:"Vinted",sold:false},
-{id:10,name:"Switch Blau/Gelb Joycon",ek:79.14,plattform:"Vinted",sold:false}
-];
+let inv=JSON.parse(localStorage.getItem("inv"))||[];
+let sales=JSON.parse(localStorage.getItem("sales"))||[];
+let exp=JSON.parse(localStorage.getItem("exp"))||[];
 
-let sales=[];
+function save(){
+localStorage.setItem("inv",JSON.stringify(inv));
+localStorage.setItem("sales",JSON.stringify(sales));
+localStorage.setItem("exp",JSON.stringify(exp));
+renderAll();
+}
 
-function render(){
+function addItem(){
+inv.push({
+id:Date.now(),
+name:l_name.value,
+ek:parse(l_ek.value),
+platform:l_platform.value,
+date:l_date.value,
+pay:l_pay.value,
+sold:false
+});
+l_name.value="";l_ek.value="";l_platform.value="";l_date.value="";l_pay.value="";
+save();
+}
 
-sellSelect.innerHTML=inventory.filter(x=>!x.sold)
-.map(x=>`<option value="${x.id}">${x.name}</option>`).join("");
+function sellItem(){
+let item=inv.find(i=>i.id==v_item.value);
+if(!item)return;
+
+let price=parse(v_price.value);
+let ship=parse(v_ship.value);
+let other=parse(v_other.value);
+let percent=parse(v_percent.value)||10;
+let fix=parse(v_fix.value)||0.42;
+
+let ebay=(price*percent/100)+fix;
+let profit=price-item.ek-ebay-ship-other;
+let tax=profit*0.4;
+
+item.sold=true;
+
+sales.push({
+date:new Date().toISOString().slice(0,10),
+name:item.name,
+ek:item.ek,
+price,
+ebay,
+ship,
+other,
+profit,
+tax
+});
+
+v_price.value="";v_ship.value="";v_other.value="";
+save();
+
+saleResult.innerHTML="Gewinn: "+money(profit)+" € | Steuer 40%: "+money(tax)+" €";
+}
+
+function addExpense(){
+exp.push({
+date:e_date.value,
+cat:e_cat.value,
+amount:parse(e_amount.value)
+});
+e_date.value="";e_cat.value="";e_amount.value="";
+save();
+}
+
+function renderAll(){
+
+let revenue=sales.reduce((s,x)=>s+x.price,0);
+let cogs=sales.reduce((s,x)=>s+x.ek,0);
+let ebay=sales.reduce((s,x)=>s+x.ebay,0);
+let ship=sales.reduce((s,x)=>s+x.ship,0);
+let otherSale=sales.reduce((s,x)=>s+x.other,0);
+let otherExp=exp.reduce((s,x)=>s+x.amount,0);
+let profit=revenue-cogs-ebay-ship-otherSale-otherExp;
+let taxTotal=sales.reduce((s,x)=>s+x.tax,0);
+let inventoryValue=inv.filter(x=>!x.sold).reduce((s,x)=>s+x.ek,0);
+
+overview.innerHTML=`
+Einnahmen: ${money(revenue)} €<br>
+Wareneinsatz: ${money(cogs)} €<br>
+eBay Gebühren: ${money(ebay)} €<br>
+Versand: ${money(ship)} €<br>
+Sonstige Verkaufskosten: ${money(otherSale)} €<br>
+Ausgaben: ${money(otherExp)} €<br><br>
+<b>Jahresüberschuss: ${money(profit)} €</b><br>
+<b>Gesamte Steuer Rücklage (40%): ${money(taxTotal)} €</b><br><br>
+Lagerwert (EK im Lager): ${money(inventoryValue)} €
+`;
+
+v_item.innerHTML=inv.filter(x=>!x.sold).map(x=>`<option value="${x.id}">${x.name}</option>`).join("");
 
 lagerTable.innerHTML=`
 <table>
-<tr><th>Artikel</th><th>EK</th><th>Plattform</th><th>Status</th></tr>
-${inventory.map(x=>`
+<tr><th>Artikel</th><th>EK</th><th>Status</th></tr>
+${inv.map(x=>`
 <tr class="${x.sold?'sold':''}">
 <td>${x.name}</td>
 <td class="right">${money(x.ek)} €</td>
-<td>${x.plattform}</td>
 <td>${x.sold?'Verkauft':'Im Lager'}</td>
 </tr>
 `).join("")}
 </table>
 `;
 
-let revenue=sales.reduce((s,x)=>s+x.price,0);
-let cogs=sales.reduce((s,x)=>s+x.ek,0);
-let profit=revenue-cogs;
-let tax=profit*0.4;
+salesTable.innerHTML=`
+<table>
+<tr><th>Datum</th><th>Artikel</th><th>Gewinn</th><th>40% Steuer</th></tr>
+${sales.map(s=>`
+<tr>
+<td>${s.date}</td>
+<td>${s.name}</td>
+<td class="right">${money(s.profit)} €</td>
+<td class="right">${money(s.tax)} €</td>
+</tr>
+`).join("")}
+</table>
+`;
 
-overview.innerHTML=`
-Einnahmen: ${money(revenue)} €<br>
-Wareneinsatz: ${money(cogs)} €<br>
-<b>Gewinn: ${money(profit)} €</b><br>
-<b>Steuer Rücklage (40%): ${money(tax)} €</b>
+expenseTable.innerHTML=`
+<table>
+<tr><th>Datum</th><th>Kategorie</th><th>Betrag</th></tr>
+${exp.map(e=>`
+<tr>
+<td>${e.date}</td>
+<td>${e.cat}</td>
+<td class="right">${money(e.amount)} €</td>
+</tr>
+`).join("")}
+</table>
 `;
 }
 
-function sell(){
-let id=sellSelect.value;
-let item=inventory.find(x=>x.id==id);
-if(!item)return;
-
-let price=parse(sellPrice.value);
-let profit=price-item.ek;
-let tax=profit*0.4;
-
-item.sold=true;
-sales.push({ek:item.ek,price,profit,tax});
-sellPrice.value="";
-result.innerHTML="Gewinn: "+money(profit)+" € | 40% Steuer: "+money(tax)+" €";
-render();
+function downloadBackup(){
+let blob=new Blob([JSON.stringify({inv,sales,exp})],{type:"application/json"});
+let a=document.createElement("a");
+a.href=URL.createObjectURL(blob);
+a.download="backup.json";
+a.click();
 }
 
-render();
-</script>
+function restoreBackup(){
+let f=restoreFile.files[0];
+let r=new FileReader();
+r.onload=function(e){
+let d=JSON.parse(e.target.result);
+inv=d.inv||[];sales=d.sales||[];exp=d.exp||[];
+save();
+};
+r.readAsText(f);
+}
 
+renderAll();
+</script>
 </body>
 </html>
