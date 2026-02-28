@@ -1,195 +1,792 @@
-<!DOCTYPE <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kleingewerbe Pro Ultimate</title>
-
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kleingewerbe Pro (Offline)</title>
 <style>
-body{font-family:Arial;background:#f2f2f2;margin:0}
-.nav{display:flex;background:#000}
-.nav button{flex:1;padding:12px;border:none;background:#000;color:#fff;font-size:12px}
-.section{display:none;padding:15px}
-.active{display:block}
-.card{background:#fff;padding:10px;border-radius:8px;margin-bottom:8px}
-input,select{width:100%;padding:8px;margin:4px 0}
-button.action{background:#000;color:#fff;border:none;padding:8px;margin-top:4px}
-button.small{padding:5px 8px;font-size:12px;margin-right:5px}
-.summary{background:#fff;padding:15px;border-radius:10px;margin-bottom:10px}
-.sold{text-decoration:line-through;color:gray}
-h2{margin:5px 0}
+  :root{
+    --bg:#f2f2f2; --card:#fff; --text:#111; --muted:#666; --black:#000;
+    --line:#e6e6e6; --danger:#c62828; --ok:#0a7;
+  }
+  body{font-family: Arial, system-ui, -apple-system; background:var(--bg); margin:0; color:var(--text);}
+  .nav{display:flex; background:var(--black); position:sticky; top:0; z-index:10;}
+  .nav button{flex:1; padding:12px 8px; border:none; background:var(--black); color:#fff; font-size:12px;}
+  .wrap{padding:14px; max-width:980px; margin:0 auto;}
+  .section{display:none;}
+  .active{display:block;}
+  .card{background:var(--card); border-radius:12px; padding:12px; margin-bottom:12px; box-shadow:0 4px 16px rgba(0,0,0,.06);}
+  h2{margin:4px 0 10px 0;}
+  .grid{display:grid; gap:8px;}
+  .g2{grid-template-columns:1fr 1fr;}
+  .g3{grid-template-columns:1fr 1fr 1fr;}
+  @media(max-width:700px){ .g2,.g3{grid-template-columns:1fr;} }
+  label{font-size:12px; color:var(--muted);}
+  input, select, textarea{
+    width:100%; box-sizing:border-box; padding:10px; border-radius:10px;
+    border:1px solid var(--line); font-size:14px; background:#fff;
+  }
+  textarea{min-height:70px;}
+  .btn{width:100%; padding:12px; border:none; border-radius:12px; background:var(--black); color:#fff; font-size:14px;}
+  .btnRow{display:flex; gap:8px;}
+  .btnRow .btn{width:auto; flex:1;}
+  .btnGray{background:#e9e9e9; color:#111;}
+  .btnDanger{background:var(--danger);}
+  .pill{display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; background:#f4f4f4; margin-right:6px;}
+  .muted{color:var(--muted); font-size:12px;}
+  .ok{color:var(--ok); font-weight:bold;}
+  .tableWrap{overflow:auto;}
+  table{width:100%; border-collapse:collapse; font-size:13px; min-width:820px;}
+  th,td{border-bottom:1px solid var(--line); padding:10px; text-align:left; vertical-align:top;}
+  th{background:#fafafa; position:sticky; top:44px;} /* unter Nav */
+  .soldRow{color:#888; text-decoration:line-through;}
+  .right{text-align:right;}
+  .small{font-size:12px;}
+  .kpi{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  @media(max-width:700px){ .kpi{grid-template-columns:1fr;} }
+  .kpi .box{background:#fff; border-radius:12px; padding:12px; border:1px solid var(--line);}
+  .kpi .val{font-size:18px; font-weight:bold; margin-top:4px;}
+  .hr{height:1px; background:var(--line); margin:10px 0;}
 </style>
 </head>
 <body>
 
 <div class="nav">
-<button onclick="showTab('dashboard')">📊 Übersicht</button>
-<button onclick="showTab('lager')">📦 Lager</button>
-<button onclick="showTab('verkauf')">💰 Verkauf</button>
+  <button onclick="showTab('dash')">📊 Übersicht</button>
+  <button onclick="showTab('lager')">📦 Lager</button>
+  <button onclick="showTab('verkauf')">💰 Verkauf</button>
+  <button onclick="showTab('ausgaben')">💸 Ausgaben</button>
+  <button onclick="showTab('backup')">💾 Backup</button>
 </div>
 
-<!-- DASHBOARD -->
-<div id="dashboard" class="section active">
-<h2>Gesamtübersicht</h2>
-<div class="summary" id="gesamtInfo"></div>
-</div>
+<div class="wrap">
 
-<!-- LAGER -->
-<div id="lager" class="section">
-<h2>Artikel hinzufügen</h2>
+  <!-- DASHBOARD -->
+  <div id="dash" class="section active">
+    <div class="card">
+      <h2>Übersicht & EÜR</h2>
 
-<input id="lagerName" placeholder="Artikelname">
-<input id="lagerEK" type="number" placeholder="Einkaufspreis €">
-<input id="lagerPlattform" placeholder="Plattform">
-<input id="lagerDatum" type="date">
-<input id="lagerZahlung" placeholder="Bezahlart">
+      <div class="kpi" id="kpis"></div>
 
-<button class="action" onclick="addLager()">Speichern</button>
+      <div class="hr"></div>
 
-<h2>Bestand</h2>
-<div id="lagerListe"></div>
-</div>
+      <div class="grid g3">
+        <div>
+          <label>eBay Gebühr % (Standard 10)</label>
+          <input id="set_fee_percent" inputmode="decimal" value="10">
+        </div>
+        <div>
+          <label>Fix pro Artikel € (Standard 0,42)</label>
+          <input id="set_fee_fixed" inputmode="decimal" value="0,42">
+        </div>
+        <div>
+          <label>Steuer-Rücklage % (Standard 40)</label>
+          <input id="set_tax_percent" inputmode="decimal" value="40">
+        </div>
+      </div>
 
-<!-- VERKAUF -->
-<div id="verkauf" class="section">
-<h2>Artikel verkaufen</h2>
-<select id="verkaufArtikel"></select>
-<input id="verkaufPreis" type="number" placeholder="Verkaufspreis €">
-<input id="ebayProzent" type="number" value="10">
-<button class="action" onclick="verkaufen()">Verkaufen</button>
-<div id="verkaufErgebnis"></div>
+      <div class="btnRow" style="margin-top:10px;">
+        <button class="btn btnGray" onclick="saveSettings()">Einstellungen speichern</button>
+        <button class="btn" onclick="exportEuerPDF()">🧾 EÜR als PDF</button>
+      </div>
+
+      <p class="muted" style="margin-top:10px;">
+        Hinweis: PDF-Export öffnet die Druckansicht → iPhone: Vorschau großziehen → Teilen → „In Dateien sichern“.
+      </p>
+    </div>
+  </div>
+
+  <!-- LAGER -->
+  <div id="lager" class="section">
+    <div class="card">
+      <h2>Artikel ins Lager</h2>
+
+      <div class="grid g3">
+        <div>
+          <label>Artikelname</label>
+          <input id="in_name" placeholder="z.B. iPhone Hülle">
+        </div>
+        <div>
+          <label>EK €</label>
+          <input id="in_ek" inputmode="decimal" placeholder="z.B. 4,99">
+        </div>
+        <div>
+          <label>Plattform gekauft</label>
+          <input id="in_platform" placeholder="z.B. eBay, Vinted, Kleinanzeigen">
+        </div>
+      </div>
+
+      <div class="grid g3">
+        <div>
+          <label>Kaufdatum</label>
+          <input id="in_buydate" type="date">
+        </div>
+        <div>
+          <label>Bezahlart</label>
+          <input id="in_pay" placeholder="PayPal, Überweisung, Bar ...">
+        </div>
+        <div>
+          <label>Notiz (optional)</label>
+          <input id="in_note" placeholder="z.B. Zustand, Größe, Farbe">
+        </div>
+      </div>
+
+      <button class="btn" onclick="addInventory()">Speichern</button>
+      <p class="muted">Tipp: Komma als Dezimalzahl geht (z.B. 4,99).</p>
+    </div>
+
+    <div class="card">
+      <h2>Lagerbestand</h2>
+      <div class="muted" id="lager_summary"></div>
+      <div class="tableWrap" id="lager_table"></div>
+    </div>
+  </div>
+
+  <!-- VERKAUF -->
+  <div id="verkauf" class="section">
+    <div class="card">
+      <h2>Artikel verkaufen</h2>
+
+      <div class="grid g2">
+        <div>
+          <label>Artikel (nur „nicht verkauft“)</label>
+          <select id="sale_item"></select>
+        </div>
+        <div>
+          <label>Verkaufdatum</label>
+          <input id="sale_date" type="date">
+        </div>
+      </div>
+
+      <div class="grid g3">
+        <div>
+          <label>Verkaufspreis €</label>
+          <input id="sale_price" inputmode="decimal" placeholder="z.B. 19,99">
+        </div>
+        <div>
+          <label>Versandkosten €</label>
+          <input id="sale_ship" inputmode="decimal" placeholder="z.B. 2,75">
+        </div>
+        <div>
+          <label>Sonstige Kosten €</label>
+          <input id="sale_other" inputmode="decimal" placeholder="z.B. Verpackung, Rabatt ...">
+        </div>
+      </div>
+
+      <div class="grid g3">
+        <div>
+          <label>eBay Gebühr %</label>
+          <input id="sale_fee_percent" inputmode="decimal">
+        </div>
+        <div>
+          <label>Fix pro Artikel €</label>
+          <input id="sale_fee_fixed" inputmode="decimal">
+        </div>
+        <div>
+          <label>Berechnung</label>
+          <input id="sale_calc" disabled>
+        </div>
+      </div>
+
+      <div class="btnRow">
+        <button class="btn btnGray" onclick="previewSale()">Vorschau</button>
+        <button class="btn" onclick="confirmSale()">Als verkauft markieren</button>
+      </div>
+
+      <p id="sale_result" class="small" style="margin-top:10px;"></p>
+    </div>
+
+    <div class="card">
+      <h2>Verkäufe</h2>
+      <div class="tableWrap" id="sales_table"></div>
+    </div>
+  </div>
+
+  <!-- AUSGABEN -->
+  <div id="ausgaben" class="section">
+    <div class="card">
+      <h2>Ausgabe erfassen (Ersatzteile / Sonstiges)</h2>
+
+      <div class="grid g3">
+        <div>
+          <label>Datum</label>
+          <input id="ex_date" type="date">
+        </div>
+        <div>
+          <label>Kategorie</label>
+          <input id="ex_cat" placeholder="z.B. Ersatzteile, Werkzeug, Verpackung">
+        </div>
+        <div>
+          <label>Betrag €</label>
+          <input id="ex_amount" inputmode="decimal" placeholder="z.B. 12,50">
+        </div>
+      </div>
+
+      <div>
+        <label>Notiz</label>
+        <input id="ex_note" placeholder="optional">
+      </div>
+
+      <button class="btn" onclick="addExpense()">Speichern</button>
+    </div>
+
+    <div class="card">
+      <h2>Ausgabenliste</h2>
+      <div class="tableWrap" id="expense_table"></div>
+    </div>
+  </div>
+
+  <!-- BACKUP -->
+  <div id="backup" class="section">
+    <div class="card">
+      <h2>Backup & Wiederherstellung</h2>
+      <button class="btn" onclick="downloadBackup()">📥 Backup-Datei erstellen</button>
+
+      <div class="hr"></div>
+
+      <label>Backup-Datei auswählen (.json)</label>
+      <input type="file" id="backup_file" accept=".json">
+      <button class="btn btnGray" onclick="restoreBackup()">📤 Backup wiederherstellen</button>
+
+      <div class="hr"></div>
+      <button class="btn btnDanger" onclick="wipeAll()">🗑️ Alles löschen (Reset)</button>
+
+      <p class="muted">Backup ist der beste Schutz, falls Safari mal Daten löscht.</p>
+    </div>
+  </div>
+
 </div>
 
 <script>
+/*** ====== STORAGE KEYS ====== ***/
+const KEY_INV = "kgp_inv_v3";
+const KEY_SALES = "kgp_sales_v3";
+const KEY_EXP = "kgp_exp_v3";
+const KEY_SET = "kgp_set_v3";
 
-let lager = JSON.parse(localStorage.getItem("lager")) || [];
-let verkauftListe = JSON.parse(localStorage.getItem("verkauft")) || [];
+/*** ====== HELPERS ====== ***/
+const $ = (id)=>document.getElementById(id);
 
-function saveAll(){
-localStorage.setItem("lager",JSON.stringify(lager));
-localStorage.setItem("verkauft",JSON.stringify(verkauftListe));
-updateDashboard();
+function todayISO(){
+  const d = new Date();
+  const off = d.getTimezoneOffset();
+  const d2 = new Date(d.getTime() - off*60*1000);
+  return d2.toISOString().slice(0,10);
 }
 
-function showTab(tab){
-document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
-document.getElementById(tab).classList.add("active");
+function parseMoney(v){
+  if(v === null || v === undefined) return 0;
+  const s = String(v).trim().replace(/\./g,"").replace(",","."); // "1.234,56" -> "1234.56"
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
 }
 
-function addLager(){
-lager.push({
-name:lagerName.value,
-ek:parseFloat(lagerEK.value)||0,
-plattform:lagerPlattform.value,
-datum:lagerDatum.value,
-zahlung:lagerZahlung.value,
-verkauft:false
+function money(n){
+  return (Math.round((n + Number.EPSILON) * 100) / 100).toFixed(2).replace(".",",");
+}
+
+function uid(){
+  return Math.random().toString(16).slice(2) + Date.now().toString(16);
+}
+
+/*** ====== STATE ====== ***/
+let inv = load(KEY_INV, []);
+let sales = load(KEY_SALES, []);
+let exp = load(KEY_EXP, []);
+let settings = load(KEY_SET, {
+  feePercent: 10,
+  feeFixed: 0.42,
+  taxPercent: 40
 });
 
-lagerName.value="";
-lagerEK.value="";
-lagerPlattform.value="";
-lagerDatum.value="";
-lagerZahlung.value="";
-
-saveAll();
-renderLager();
+function load(key, fallback){
+  try{
+    const raw = localStorage.getItem(key);
+    if(!raw) return fallback;
+    return JSON.parse(raw);
+  }catch(e){
+    return fallback;
+  }
 }
 
-function renderLager(){
-
-lagerListe.innerHTML="";
-verkaufArtikel.innerHTML="";
-
-lager.forEach((a,i)=>{
-
-let klasse = a.verkauft ? "sold" : "";
-
-lagerListe.innerHTML += `
-<div class="card ${klasse}">
-<input value="${a.name}" onchange="editArtikel(${i},'name',this.value)">
-<input type="number" value="${a.ek}" onchange="editArtikel(${i},'ek',this.value)">
-<input value="${a.plattform}" onchange="editArtikel(${i},'plattform',this.value)">
-<input type="date" value="${a.datum}" onchange="editArtikel(${i},'datum',this.value)">
-<input value="${a.zahlung}" onchange="editArtikel(${i},'zahlung',this.value)">
-<p>Status: ${a.verkauft ? "Verkauft" : "Im Lager"}</p>
-
-<button class="small" onclick="toggleStatus(${i})">Status ändern</button>
-<button class="small" onclick="deleteArtikel(${i})">Löschen</button>
-</div>
-`;
-
-if(!a.verkauft){
-verkaufArtikel.innerHTML += `<option value="${i}">${a.name}</option>`;
+function save(){
+  localStorage.setItem(KEY_INV, JSON.stringify(inv));
+  localStorage.setItem(KEY_SALES, JSON.stringify(sales));
+  localStorage.setItem(KEY_EXP, JSON.stringify(exp));
+  localStorage.setItem(KEY_SET, JSON.stringify(settings));
 }
 
-});
+/*** ====== NAV ====== ***/
+function showTab(id){
+  document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
+  $(id).classList.add("active");
 }
 
-function editArtikel(index, feld, wert){
-if(feld==="ek") wert=parseFloat(wert)||0;
-lager[index][feld]=wert;
-saveAll();
+/*** ====== SETTINGS ====== ***/
+function applySettingsToUI(){
+  $("set_fee_percent").value = String(settings.feePercent).replace(".",",");
+  $("set_fee_fixed").value = String(settings.feeFixed).replace(".",",");
+  $("set_tax_percent").value = String(settings.taxPercent).replace(".",",");
+
+  $("sale_fee_percent").value = String(settings.feePercent).replace(".",",");
+  $("sale_fee_fixed").value = String(settings.feeFixed).replace(".",",");
 }
 
-function toggleStatus(index){
-lager[index].verkauft = !lager[index].verkauft;
-saveAll();
-renderLager();
+function saveSettings(){
+  settings.feePercent = parseMoney($("set_fee_percent").value);
+  settings.feeFixed = parseMoney($("set_fee_fixed").value);
+  settings.taxPercent = parseMoney($("set_tax_percent").value);
+  save();
+  applySettingsToUI();
+  renderAll();
+  alert("Einstellungen gespeichert ✅");
 }
 
-function deleteArtikel(index){
-if(confirm("Artikel wirklich löschen?")){
-lager.splice(index,1);
-saveAll();
-renderLager();
-}
-}
+/*** ====== INVENTORY ====== ***/
+function addInventory(){
+  const name = $("in_name").value.trim();
+  if(!name){ alert("Bitte Artikelname eingeben."); return; }
 
-function verkaufen(){
+  const item = {
+    id: uid(),
+    name,
+    ek: parseMoney($("in_ek").value),
+    platform: $("in_platform").value.trim(),
+    buyDate: $("in_buydate").value || todayISO(),
+    pay: $("in_pay").value.trim(),
+    note: $("in_note").value.trim(),
+    sold: false,
+    soldDate: null
+  };
 
-let index = verkaufArtikel.value;
-let artikel = lager[index];
-
-let preis = parseFloat(verkaufPreis.value)||0;
-let prozent = parseFloat(ebayProzent.value)||10;
-let ebayGeb = (preis*prozent/100)+0.42;
-let gewinn = preis - artikel.ek - ebayGeb;
-
-artikel.verkauft = true;
-
-verkauftListe.push({
-datum:new Date(),
-name:artikel.name,
-ek:artikel.ek,
-preis,
-gewinn
-});
-
-saveAll();
-renderLager();
-
-verkaufErgebnis.innerHTML="Gewinn: "+gewinn.toFixed(2)+" €";
+  inv.unshift(item);
+  save();
+  clearInventoryInputs();
+  renderAll();
+  alert("Im Lager gespeichert ✅");
 }
 
-function updateDashboard(){
-
-let einnahmen = verkauftListe.reduce((s,v)=>s+v.preis,0);
-let wareneinsatz = verkauftListe.reduce((s,v)=>s+v.ek,0);
-let gewinn = einnahmen - wareneinsatz;
-let steuer = gewinn*0.4;
-
-gesamtInfo.innerHTML=
-"Einnahmen: "+einnahmen.toFixed(2)+" €<br>"+
-"Wareneinsatz: "+wareneinsatz.toFixed(2)+" €<br>"+
-"<b>Gewinn: "+gewinn.toFixed(2)+" €</b><br>"+
-"Steuer Rücklage (40%): "+steuer.toFixed(2)+" €";
-
+function clearInventoryInputs(){
+  $("in_name").value="";
+  $("in_ek").value="";
+  $("in_platform").value="";
+  $("in_buydate").value="";
+  $("in_pay").value="";
+  $("in_note").value="";
 }
 
-renderLager();
-updateDashboard();
+function toggleSold(itemId){
+  const it = inv.find(x=>x.id===itemId);
+  if(!it) return;
+  it.sold = !it.sold;
+  it.soldDate = it.sold ? (it.soldDate || todayISO()) : null;
 
+  // Falls man „verkauft“ zurücknimmt: zugehörigen Sale-Eintrag NICHT automatisch löschen (Historie bleibt).
+  // Wenn du willst, kann ich optional eine Verknüpfung + Rückgängig-Logik bauen.
+  save();
+  renderAll();
+}
+
+function deleteInventory(itemId){
+  if(!confirm("Artikel wirklich löschen?")) return;
+  inv = inv.filter(x=>x.id!==itemId);
+  save();
+  renderAll();
+}
+
+function startEdit(itemId){
+  const it = inv.find(x=>x.id===itemId);
+  if(!it) return;
+
+  // einfacher Inline-Edit: prompt (mobil schnell/übersichtlich)
+  const name = prompt("Artikelname", it.name); if(name===null) return;
+  const ek = prompt("EK (€)", String(it.ek).replace(".",",")); if(ek===null) return;
+  const platform = prompt("Plattform", it.platform || ""); if(platform===null) return;
+  const buyDate = prompt("Kaufdatum (YYYY-MM-DD)", it.buyDate || todayISO()); if(buyDate===null) return;
+  const pay = prompt("Bezahlart", it.pay || ""); if(pay===null) return;
+  const note = prompt("Notiz", it.note || ""); if(note===null) return;
+
+  it.name = String(name).trim() || it.name;
+  it.ek = parseMoney(ek);
+  it.platform = String(platform).trim();
+  it.buyDate = String(buyDate).trim() || it.buyDate;
+  it.pay = String(pay).trim();
+  it.note = String(note).trim();
+
+  save();
+  renderAll();
+}
+
+/*** ====== SALES ====== ***/
+function populateSaleSelect(){
+  const selectable = inv.filter(x=>!x.sold);
+  $("sale_item").innerHTML = selectable.length
+    ? selectable.map(x=>`<option value="${x.id}">${x.name}</option>`).join("")
+    : `<option value="">(kein Artikel verfügbar)</option>`;
+}
+
+function computeSalePreview(){
+  const itemId = $("sale_item").value;
+  const it = inv.find(x=>x.id===itemId);
+  if(!it) return null;
+
+  const price = parseMoney($("sale_price").value);
+  const ship = parseMoney($("sale_ship").value);
+  const other = parseMoney($("sale_other").value);
+
+  const feePercent = parseMoney($("sale_fee_percent").value);
+  const feeFixed = parseMoney($("sale_fee_fixed").value);
+
+  const ebayFee = (price * feePercent / 100) + feeFixed;   // ✅ 0,42 pro Artikel
+  const profit = price - it.ek - ebayFee - ship - other;
+
+  return { it, price, ship, other, feePercent, feeFixed, ebayFee, profit };
+}
+
+function previewSale(){
+  const p = computeSalePreview();
+  if(!p){ $("sale_result").innerText="Kein Artikel ausgewählt."; return; }
+
+  $("sale_calc").value = `Gebühr ${money(p.ebayFee)} € | Gewinn ${money(p.profit)} €`;
+  $("sale_result").innerHTML =
+    `<span class="pill">EK: ${money(p.it.ek)} €</span>` +
+    `<span class="pill">Preis: ${money(p.price)} €</span>` +
+    `<span class="pill">eBay: ${money(p.ebayFee)} €</span>` +
+    `<span class="pill">Versand: ${money(p.ship)} €</span>` +
+    `<span class="pill">Sonst.: ${money(p.other)} €</span>` +
+    `<div style="margin-top:8px;"><b>Gewinn:</b> ${money(p.profit)} €</div>`;
+}
+
+function confirmSale(){
+  const p = computeSalePreview();
+  if(!p){ alert("Bitte Artikel auswählen."); return; }
+  if(p.price <= 0){ alert("Bitte Verkaufspreis eingeben."); return; }
+
+  const soldDate = $("sale_date").value || todayISO();
+
+  // markiere Lagerartikel als verkauft (nicht löschen!)
+  p.it.sold = true;
+  p.it.soldDate = soldDate;
+
+  sales.unshift({
+    id: uid(),
+    itemId: p.it.id,
+    name: p.it.name,
+    soldDate,
+    ek: p.it.ek,
+    price: p.price,
+    ebayFee: p.ebayFee,
+    ship: p.ship,
+    other: p.other,
+    feePercent: p.feePercent,
+    feeFixed: p.feeFixed,
+    profit: p.profit
+  });
+
+  save();
+  renderAll();
+
+  $("sale_price").value="";
+  $("sale_ship").value="";
+  $("sale_other").value="";
+  $("sale_calc").value="";
+  $("sale_result").innerText="✅ Als verkauft markiert.";
+}
+
+function deleteSale(saleId){
+  if(!confirm("Verkauf wirklich löschen?")) return;
+  sales = sales.filter(s=>s.id!==saleId);
+  save();
+  renderAll();
+}
+
+/*** ====== EXPENSES ====== ***/
+function addExpense(){
+  const amount = parseMoney($("ex_amount").value);
+  if(amount === 0){ alert("Bitte Betrag eingeben."); return; }
+
+  exp.unshift({
+    id: uid(),
+    date: $("ex_date").value || todayISO(),
+    cat: $("ex_cat").value.trim() || "Sonstiges",
+    amount,
+    note: $("ex_note").value.trim()
+  });
+
+  $("ex_amount").value="";
+  $("ex_cat").value="";
+  $("ex_note").value="";
+  save();
+  renderAll();
+  alert("Ausgabe gespeichert ✅");
+}
+
+function deleteExpense(id){
+  if(!confirm("Ausgabe löschen?")) return;
+  exp = exp.filter(e=>e.id!==id);
+  save();
+  renderAll();
+}
+
+/*** ====== DASH / EÜR ====== ***/
+function calc(){
+  // Einnahmen
+  const revenue = sales.reduce((s,x)=>s + (x.price||0), 0);
+
+  // Wareneinsatz = EK der verkauften Artikel
+  const cogs = sales.reduce((s,x)=>s + (x.ek||0), 0);
+
+  // Gebühren, Versand, Verkaufskosten
+  const ebayFees = sales.reduce((s,x)=>s + (x.ebayFee||0), 0);
+  const ship = sales.reduce((s,x)=>s + (x.ship||0), 0);
+  const saleOther = sales.reduce((s,x)=>s + (x.other||0), 0);
+
+  // Sonstige Ausgaben (Reiter Ausgaben)
+  const otherExp = exp.reduce((s,x)=>s + (x.amount||0), 0);
+
+  // Lagerwert (nur nicht-verkauft) = gebundenes Kapital
+  const inventoryValue = inv.filter(x=>!x.sold).reduce((s,x)=>s + (x.ek||0), 0);
+
+  // EÜR-Jahresüberschuss:
+  const euerProfit = revenue - cogs - ebayFees - ship - saleOther - otherExp;
+
+  const taxReserve = euerProfit * (settings.taxPercent/100);
+
+  return { revenue, cogs, ebayFees, ship, saleOther, otherExp, inventoryValue, euerProfit, taxReserve };
+}
+
+function renderDashboard(){
+  const c = calc();
+
+  $("kpis").innerHTML = `
+    <div class="box"><div class="muted">Einnahmen (Verkäufe)</div><div class="val">${money(c.revenue)} €</div></div>
+    <div class="box"><div class="muted">Wareneinsatz (EK verkauft)</div><div class="val">${money(c.cogs)} €</div></div>
+    <div class="box"><div class="muted">eBay Gebühren (inkl. Fix/Artikel)</div><div class="val">${money(c.ebayFees)} €</div></div>
+    <div class="box"><div class="muted">Versandkosten (Verkauf)</div><div class="val">${money(c.ship)} €</div></div>
+    <div class="box"><div class="muted">Sonstige Verkaufskosten</div><div class="val">${money(c.saleOther)} €</div></div>
+    <div class="box"><div class="muted">Ausgaben (Ersatzteile etc.)</div><div class="val">${money(c.otherExp)} €</div></div>
+    <div class="box"><div class="muted">EÜR Jahresüberschuss</div><div class="val">${money(c.euerProfit)} €</div></div>
+    <div class="box"><div class="muted">Steuer-Rücklage (${settings.taxPercent}%)</div><div class="val">${money(c.taxReserve)} €</div></div>
+    <div class="box"><div class="muted">Lagerwert (Summe EK im Lager)</div><div class="val">${money(c.inventoryValue)} €</div></div>
+    <div class="box"><div class="muted">Lager Artikel</div><div class="val">${inv.filter(x=>!x.sold).length} / ${inv.length}</div></div>
+  `;
+}
+
+/*** ====== RENDER TABLES ====== ***/
+function renderInventory(){
+  const inventoryValue = inv.filter(x=>!x.sold).reduce((s,x)=>s+(x.ek||0),0);
+  $("lager_summary").innerHTML =
+    `Artikel (nicht verkauft): <b>${inv.filter(x=>!x.sold).length}</b> | Gesamt EK im Lager: <b>${money(inventoryValue)} €</b>`;
+
+  const rows = inv.map(x=>{
+    const cls = x.sold ? "soldRow" : "";
+    const status = x.sold ? `Verkauft (${x.soldDate || ""})` : "Im Lager";
+    return `
+      <tr class="${cls}">
+        <td><b>${escapeHtml(x.name)}</b><div class="muted small">${escapeHtml(x.note||"")}</div></td>
+        <td class="right">${money(x.ek)} €</td>
+        <td>${escapeHtml(x.platform||"")}</td>
+        <td>${escapeHtml(x.buyDate||"")}</td>
+        <td>${escapeHtml(x.pay||"")}</td>
+        <td>${status}</td>
+        <td class="right">
+          <button class="btn btnGray" style="padding:8px; font-size:12px;" onclick="startEdit('${x.id}')">Bearbeiten</button>
+          <div style="height:6px"></div>
+          <button class="btn btnGray" style="padding:8px; font-size:12px;" onclick="toggleSold('${x.id}')">Status</button>
+          <div style="height:6px"></div>
+          <button class="btn btnDanger" style="padding:8px; font-size:12px;" onclick="deleteInventory('${x.id}')">Löschen</button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  $("lager_table").innerHTML = `
+    <div class="tableWrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Artikel</th>
+            <th class="right">EK</th>
+            <th>Plattform</th>
+            <th>Kaufdatum</th>
+            <th>Bezahlart</th>
+            <th>Status</th>
+            <th class="right">Aktion</th>
+          </tr>
+        </thead>
+        <tbody>${rows || `<tr><td colspan="7" class="muted">Noch keine Artikel im Lager.</td></tr>`}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderSales(){
+  const rows = sales.map(s=>{
+    return `
+      <tr>
+        <td>${escapeHtml(s.soldDate||"")}</td>
+        <td><b>${escapeHtml(s.name)}</b></td>
+        <td class="right">${money(s.ek)} €</td>
+        <td class="right">${money(s.price)} €</td>
+        <td class="right">${money(s.ebayFee)} €</td>
+        <td class="right">${money(s.ship)} €</td>
+        <td class="right">${money(s.other)} €</td>
+        <td class="right"><b>${money(s.profit)} €</b></td>
+        <td class="right">
+          <button class="btn btnDanger" style="padding:8px; font-size:12px;" onclick="deleteSale('${s.id}')">Löschen</button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  $("sales_table").innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Datum</th>
+          <th>Artikel</th>
+          <th class="right">EK</th>
+          <th class="right">Verkauf</th>
+          <th class="right">eBay</th>
+          <th class="right">Versand</th>
+          <th class="right">Sonst.</th>
+          <th class="right">Gewinn</th>
+          <th class="right">Aktion</th>
+        </tr>
+      </thead>
+      <tbody>${rows || `<tr><td colspan="9" class="muted">Noch keine Verkäufe.</td></tr>`}</tbody>
+    </table>
+  `;
+}
+
+function renderExpenses(){
+  const rows = exp.map(e=>`
+    <tr>
+      <td>${escapeHtml(e.date||"")}</td>
+      <td>${escapeHtml(e.cat||"")}</td>
+      <td class="right">${money(e.amount)} €</td>
+      <td>${escapeHtml(e.note||"")}</td>
+      <td class="right">
+        <button class="btn btnDanger" style="padding:8px; font-size:12px;" onclick="deleteExpense('${e.id}')">Löschen</button>
+      </td>
+    </tr>
+  `).join("");
+
+  $("expense_table").innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Datum</th>
+          <th>Kategorie</th>
+          <th class="right">Betrag</th>
+          <th>Notiz</th>
+          <th class="right">Aktion</th>
+        </tr>
+      </thead>
+      <tbody>${rows || `<tr><td colspan="5" class="muted">Noch keine Ausgaben.</td></tr>`}</tbody>
+    </table>
+  `;
+}
+
+function escapeHtml(s){
+  return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+/*** ====== PDF (EÜR) ====== ***/
+function exportEuerPDF(){
+  const c = calc();
+  const lines = [
+    "EÜR Jahresübersicht (Offline)",
+    "",
+    `Einnahmen (Verkäufe): ${money(c.revenue)} €`,
+    `Wareneinsatz (EK verkauft): ${money(c.cogs)} €`,
+    `eBay Gebühren (inkl. Fix/Artikel): ${money(c.ebayFees)} €`,
+    `Versandkosten (Verkauf): ${money(c.ship)} €`,
+    `Sonstige Verkaufskosten: ${money(c.saleOther)} €`,
+    `Sonstige Ausgaben (Ersatzteile etc.): ${money(c.otherExp)} €`,
+    "---------------------------------------",
+    `Jahresüberschuss (EÜR): ${money(c.euerProfit)} €`,
+    `Steuer-Rücklage (${settings.taxPercent}%): ${money(c.taxReserve)} €`,
+    "",
+    `Lagerwert (Summe EK im Lager): ${money(c.inventoryValue)} €`,
+    "",
+    `Erstellt am: ${new Date().toLocaleString()}`
+  ].join("\n");
+
+  const w = window.open("", "", "width=900,height=700");
+  w.document.write(`<pre style="font-size:16px;white-space:pre-wrap;font-family:Arial;padding:16px;">${lines}</pre>`);
+  w.document.close();
+  w.focus();
+  w.print();
+}
+
+/*** ====== BACKUP ====== ***/
+function downloadBackup(){
+  const data = { inv, sales, exp, settings, created: new Date().toISOString(), version: "v3" };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `kleingewerbe_backup_${todayISO()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function restoreBackup(){
+  const f = $("backup_file").files[0];
+  if(!f){ alert("Bitte Backup-Datei auswählen."); return; }
+  const r = new FileReader();
+  r.onload = (e)=>{
+    try{
+      const data = JSON.parse(e.target.result);
+      inv = data.inv || [];
+      sales = data.sales || [];
+      exp = data.exp || [];
+      settings = data.settings || settings;
+      save();
+      applySettingsToUI();
+      renderAll();
+      alert("Backup wiederhergestellt ✅");
+    }catch(err){
+      alert("Backup konnte nicht gelesen werden.");
+    }
+  };
+  r.readAsText(f);
+}
+
+function wipeAll(){
+  if(!confirm("Wirklich alles löschen?")) return;
+  inv = []; sales = []; exp = [];
+  settings = { feePercent: 10, feeFixed: 0.42, taxPercent: 40 };
+  save();
+  applySettingsToUI();
+  renderAll();
+  alert("Alles gelöscht ✅");
+}
+
+/*** ====== RENDER ALL ====== ***/
+function renderAll(){
+  renderDashboard();
+  renderInventory();
+  populateSaleSelect();
+  renderSales();
+  renderExpenses();
+
+  // Defaults
+  if(!$("sale_date").value) $("sale_date").value = todayISO();
+  $("sale_fee_percent").value = String(settings.feePercent).replace(".",",");
+  $("sale_fee_fixed").value = String(settings.feeFixed).replace(".",",");
+}
+
+(function init(){
+  // standard dates
+  $("in_buydate").value = todayISO();
+  $("sale_date").value = todayISO();
+  $("ex_date").value = todayISO();
+
+  applySettingsToUI();
+  renderAll();
+})();
 </script>
 
 </body>
