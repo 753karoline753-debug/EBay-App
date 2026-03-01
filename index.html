@@ -12,7 +12,7 @@ th,td{border-bottom:1px solid #ddd;padding:6px}
 th{background:#f4f4f4;text-align:left}
 input{width:100%;padding:5px}
 .num{text-align:right}
-button{padding:6px 10px;margin:5px 0}
+button{padding:6px 10px;margin:5px 5px 5px 0}
 tfoot td{font-weight:bold;border-top:2px solid #000}
 </style>
 </head>
@@ -20,6 +20,9 @@ tfoot td{font-weight:bold;border-top:2px solid #000}
 <body>
 
 <h2>Reseller Rechner (10% eBay / 40% Steuer)</h2>
+
+<button onclick="addItem()">+ Neues Produkt</button>
+<button onclick="resetData()">Alles löschen</button>
 
 <table>
 <thead>
@@ -32,6 +35,7 @@ tfoot td{font-weight:bold;border-top:2px solid #000}
 <th class="num">Gewinn</th>
 <th class="num">Steuer 40%</th>
 <th class="num">Netto</th>
+<th>❌</th>
 </tr>
 </thead>
 
@@ -46,35 +50,31 @@ tfoot td{font-weight:bold;border-top:2px solid #000}
 <td class="num" id="sumProfit">0</td>
 <td class="num" id="sumTax">0</td>
 <td class="num" id="sumNet">0</td>
+<td></td>
 </tr>
 </tfoot>
 </table>
 
 <script>
 
-const rows = [
-{no:1,item:"N3DS XL Black",buy:198.89},
-{no:2,item:"N3DS XL Blau",buy:167.39},
-{no:3,item:"3DS Black/Ovp",buy:105.39},
-{no:4,item:"DSi XL Oro",buy:35.83},
-{no:5,item:"DSi XL Oro",buy:35.83},
-{no:6,item:"N3DS XL Orange/Ovp",buy:217.65},
-{no:7,item:"PSP 2004 Black",buy:55.14},
-{no:8,item:"PS Vita Blau",buy:105.39},
-{no:9,item:"Xbox 360/Ovp",buy:47.64},
-{no:10,item:"GBA SP Silber",buy:52.89},
-{no:11,item:"GBA White",buy:68.99},
-{no:12,item:"GBA IPS V2",buy:62.05},
-{no:13,item:"GB Classic Rot",buy:51.20},
-{no:14,item:"GB Classic Grün",buy:51.20},
-{no:15,item:"Switch Blau/Gelb",buy:79.14},
-{no:16,item:"PSP 2004",buy:22.20},
-{no:17,item:"PSP 3004",buy:22.20},
-{no:18,item:"PSP 3004 Türkis",buy:49.65},
-{no:19,item:"PS Vita Black",buy:74.75}
-];
+const STORAGE_KEY = "reseller_app_data";
+
+let rows = loadData();
+
+function loadData(){
+let saved = localStorage.getItem(STORAGE_KEY);
+if(saved){
+return JSON.parse(saved);
+}
+return [];
+}
+
+function saveData(){
+localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+}
 
 function render(){
+
 let tbody=document.getElementById("tbody");
 tbody.innerHTML="";
 
@@ -82,14 +82,13 @@ let sumBuy=0,sumSell=0,sumFee=0,sumProfit=0,sumTax=0,sumNet=0;
 
 rows.forEach((r,i)=>{
 
-let sell=r.sell||0;
-let fee=sell*0.10;
-let profit=sell-r.buy-fee;
+let fee=r.sell*0.10;
+let profit=r.sell-r.buy-fee;
 let tax=profit>0?profit*0.40:0;
 let net=profit-tax;
 
 sumBuy+=r.buy;
-sumSell+=sell;
+sumSell+=r.sell;
 sumFee+=fee;
 sumProfit+=profit;
 sumTax+=tax;
@@ -97,14 +96,15 @@ sumNet+=net;
 
 tbody.innerHTML+=`
 <tr>
-<td>${r.no}</td>
-<td>${r.item}</td>
-<td class="num">${r.buy.toFixed(2)}</td>
-<td><input type="number" step="0.01" value="${sell}" onchange="updateSell(${i},this.value)"></td>
+<td>${i+1}</td>
+<td><input value="${r.item}" oninput="updateItem(${i},this.value)"></td>
+<td><input type="number" step="0.01" value="${r.buy}" oninput="updateBuy(${i},this.value)"></td>
+<td><input type="number" step="0.01" value="${r.sell}" oninput="updateSell(${i},this.value)"></td>
 <td class="num">${fee.toFixed(2)}</td>
 <td class="num">${profit.toFixed(2)}</td>
 <td class="num">${tax.toFixed(2)}</td>
 <td class="num">${net.toFixed(2)}</td>
+<td><button onclick="deleteItem(${i})">X</button></td>
 </tr>
 `;
 });
@@ -115,11 +115,41 @@ document.getElementById("sumFee").innerText=sumFee.toFixed(2);
 document.getElementById("sumProfit").innerText=sumProfit.toFixed(2);
 document.getElementById("sumTax").innerText=sumTax.toFixed(2);
 document.getElementById("sumNet").innerText=sumNet.toFixed(2);
+
+saveData();
+}
+
+function addItem(){
+rows.push({item:"Neuer Artikel",buy:0,sell:0});
+render();
+}
+
+function deleteItem(i){
+rows.splice(i,1);
+render();
+}
+
+function updateItem(i,value){
+rows[i].item=value;
+render();
+}
+
+function updateBuy(i,value){
+rows[i].buy=parseFloat(value)||0;
+render();
 }
 
 function updateSell(i,value){
 rows[i].sell=parseFloat(value)||0;
 render();
+}
+
+function resetData(){
+if(confirm("Wirklich alles löschen?")){
+localStorage.removeItem(STORAGE_KEY);
+rows=[];
+render();
+}
 }
 
 render();
