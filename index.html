@@ -2,669 +2,215 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>eBay Wawi (lokal) – Lager, Verkäufe, PDF Import</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- PDF.js für lokalen PDF Import -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ReSeller Rechner – Steuern & eBay</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin: 14px; }
+    h1 { font-size: 18px; margin: 0 0 10px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 10px; }
+    label { font-size: 12px; color: #333; display:block; margin-bottom: 4px; }
+    input, button { font-size: 14px; padding: 10px; border-radius: 10px; border: 1px solid #ccc; }
+    button { border: 0; background: #111; color: #fff; padding: 10px 12px; }
+    button.secondary { background:#eee; color:#111; border:1px solid #ddd; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border-bottom: 1px solid #eee; padding: 8px 6px; vertical-align: top; }
+    th { text-align: left; font-size: 12px; color:#444; position: sticky; top: 0; background: #fff; }
+    td input { width: 100%; box-sizing: border-box; }
+    .num { text-align: right; white-space: nowrap; }
+    .muted { color:#666; font-size: 12px; }
+    .totals td { font-weight: 700; border-top: 2px solid #ddd; }
+    .pill { display:inline-block; padding:2px 8px; border-radius: 999px; background:#f3f3f3; font-size:12px; }
+  </style>
 </head>
+<body>
+  <h1>📱 ReSeller Rechner (eBay 10% & Steuern 40%)</h1>
 
-<body class="bg-gray-100">
-  <div class="max-w-xl mx-auto p-4 space-y-5">
-    <h1 class="text-2xl font-bold text-center">Warenwirtschaft (lokal)</h1>
-
-    <!-- Tabs -->
-    <div class="flex bg-white rounded-xl shadow overflow-hidden">
-      <button id="btnStock" class="flex-1 py-3" type="button">Lager</button>
-      <button id="btnSales" class="flex-1 py-3" type="button">Verkäufe</button>
-      <button id="btnExp" class="flex-1 py-3" type="button">Ausgaben</button>
-      <button id="btnDash" class="flex-1 py-3" type="button">Übersicht</button>
+  <div class="row">
+    <div class="card">
+      <label>eBay Gebühren % (Standard 10)</label>
+      <input id="feePct" type="number" step="0.1" value="10">
+      <div class="muted">Berechnet als % vom <b>Verkaufspreis</b>.</div>
     </div>
-
-    <!-- LAGER -->
-    <section id="tab-stock" class="space-y-4">
-      <div class="flex gap-2">
-        <button id="addStockBtn" class="flex-1 bg-black text-white py-3 rounded-xl" type="button">+ Lagerartikel</button>
-
-        <input id="pdfInput" type="file" accept="application/pdf" class="hidden" />
-        <button id="pdfBtn" class="bg-blue-600 text-white px-4 py-3 rounded-xl" type="button">PDF</button>
-      </div>
-
-      <div class="text-xs text-gray-500">
-        PDF Import ist optimiert für deine Tabelle (Artikelnummer / Datum / Artikel / Verkäufer / Kaufpreis).  [oai_citation:1‡Press A to buy.pdf](sediment://file_00000000d56072469688630491330bd3)
-      </div>
-
-      <div id="stockList" class="space-y-4"></div>
-    </section>
-
-    <!-- VERKÄUFE -->
-    <section id="tab-sales" class="hidden space-y-4">
-      <button id="addSaleBtn" class="w-full bg-black text-white py-3 rounded-xl" type="button">+ Verkauf</button>
-      <div id="saleList" class="space-y-4"></div>
-    </section>
-
-    <!-- AUSGABEN -->
-    <section id="tab-exp" class="hidden space-y-4">
-      <button id="addExpBtn" class="w-full bg-black text-white py-3 rounded-xl" type="button">+ Ausgabe</button>
-      <div id="expList" class="space-y-4"></div>
-    </section>
-
-    <!-- ÜBERSICHT -->
-    <section id="tab-dash" class="hidden space-y-4">
-      <div class="bg-white p-4 rounded-2xl shadow">
-        <div class="text-gray-500">Gewinn gesamt</div>
-        <div id="dashProfit" class="text-2xl font-bold">0 €</div>
-      </div>
-
-      <div class="bg-yellow-100 p-4 rounded-2xl shadow">
-        <div class="text-gray-500">40% Rücklage (Anzeige)</div>
-        <div id="dashTax" class="text-xl font-bold">0 €</div>
-      </div>
-
-      <div class="bg-green-100 p-4 rounded-2xl shadow">
-        <div class="text-gray-500">Netto (Anzeige)</div>
-        <div id="dashNet" class="text-2xl font-bold">0 €</div>
-      </div>
-
-      <div class="bg-white p-4 rounded-2xl shadow">
-        <div class="text-gray-500">Lagerwert (EK * Bestand)</div>
-        <div id="dashStockValue" class="text-xl font-bold">0 €</div>
-      </div>
-
-      <div class="text-xs text-gray-500">
-        Hinweis: Die 40% sind deine Spar-Rücklage, keine echte Steuerberechnung.
-      </div>
-    </section>
+    <div class="card">
+      <label>Steuer-Rücklage % (Standard 40)</label>
+      <input id="taxPct" type="number" step="0.1" value="40">
+      <div class="muted">Berechnet als % vom Gewinn <b>nach eBay</b> (nur wenn Gewinn &gt; 0).</div>
+    </div>
+    <div class="card">
+      <button id="addRow">+ Zeile</button>
+      <button class="secondary" id="clear">Alles löschen</button>
+      <div class="muted" style="margin-top:6px;">Daten bleiben lokal im Browser gespeichert.</div>
+    </div>
   </div>
 
+  <div class="card" style="overflow:auto;">
+    <table id="t">
+      <thead>
+        <tr>
+          <th style="min-width:70px;">#</th>
+          <th style="min-width:110px;">Datum Kauf</th>
+          <th style="min-width:220px;">Artikel / Beschreibung</th>
+          <th style="min-width:200px;">Verkäufer / Plattform</th>
+          <th class="num" style="min-width:120px;">Kaufpreis €</th>
+          <th style="min-width:120px;">Zahlungsart</th>
+          <th class="num" style="min-width:130px;">Verkaufspreis €</th>
+          <th class="num" style="min-width:120px;">eBay €</th>
+          <th class="num" style="min-width:120px;">Gewinn €</th>
+          <th class="num" style="min-width:140px;">Steuer 40% €</th>
+          <th class="num" style="min-width:120px;">Netto €</th>
+          <th style="min-width:160px;">Notizen</th>
+          <th style="min-width:90px;">Aktion</th>
+        </tr>
+      </thead>
+      <tbody id="tb"></tbody>
+      <tfoot>
+        <tr class="totals">
+          <td colspan="4">Summen</td>
+          <td class="num" id="sumBuy">0,00</td>
+          <td></td>
+          <td class="num" id="sumSell">0,00</td>
+          <td class="num" id="sumFee">0,00</td>
+          <td class="num" id="sumProfit">0,00</td>
+          <td class="num" id="sumTax">0,00</td>
+          <td class="num" id="sumNet">0,00</td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <p class="muted" style="margin-top:10px;">
+    Formel: <span class="pill">eBay = Verkaufspreis × Gebühren%</span>
+    <span class="pill">Gewinn = Verkaufspreis − Kaufpreis − eBay</span>
+    <span class="pill">Steuer = max(Gewinn,0) × Steuer%</span>
+    <span class="pill">Netto = Gewinn − Steuer</span>
+  </p>
+
 <script>
-/* =======================
-   Daten + Helfer
-======================= */
-const STORAGE_KEY = "wawi_local_v1";
+  const LS_KEY = "reseller_rows_v1";
 
-let state = loadState() || {
-  stock: [],   // {id, name, ek, qty, active, edit}
-  sales: [],   // {id, date, itemId, qty, sell, shipCustomer, fees, shipCost}
-  expenses: [] // {id, date, title, amount}
-};
+  const fmt = (n) => (isFinite(n) ? n : 0).toLocaleString("de-DE", {minimumFractionDigits:2, maximumFractionDigits:2});
+  const toNum = (v) => {
+    if (typeof v === "number") return v;
+    if (!v) return 0;
+    // akzeptiert "12,34" oder "12.34"
+    const s = String(v).trim().replace(/\./g, "").replace(",", ".");
+    const n = Number(s);
+    return isFinite(n) ? n : 0;
+  };
 
-function loadState(){
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch { return null; }
-}
-function saveState(){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
+  const feePctEl = document.getElementById("feePct");
+  const taxPctEl = document.getElementById("taxPct");
+  const tb = document.getElementById("tb");
 
-function uid(){
-  return (crypto?.randomUUID?.() || (Date.now().toString(36)+Math.random().toString(36).slice(2)));
-}
-function today(){
-  const d = new Date();
-  const p = x => String(x).padStart(2,"0");
-  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
-}
-
-function euro(n){
-  return (Number(n||0)).toLocaleString("de-DE",{style:"currency",currency:"EUR"});
-}
-
-/* robust: "1.234,56" / "123,45" / "123.45" */
-function num(v){
-  if(v===null || v===undefined) return 0;
-  let s = String(v).trim();
-  if(!s) return 0;
-  s = s.replace(/\s+/g,"");
-  const lc = s.lastIndexOf(",");
-  const ld = s.lastIndexOf(".");
-  if(lc !== -1 && ld !== -1){
-    if(lc > ld) s = s.replace(/\./g,"").replace(",",".");
-    else s = s.replace(/,/g,"");
-  } else {
-    s = s.replace(/\./g,"").replace(",",".");
+  function loadRows(){
+    try { return JSON.parse(localStorage.getItem(LS_KEY) || "[]"); }
+    catch { return []; }
   }
-  const n = parseFloat(s);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function esc(s){
-  return String(s ?? "")
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;")
-    .replace(/"/g,"&quot;");
-}
-
-/* =======================
-   Tabs
-======================= */
-const tabs = ["stock","sales","exp","dash"];
-let currentTab = "stock";
-
-function showTab(name){
-  currentTab = name;
-  tabs.forEach(t=>{
-    document.getElementById("tab-"+t).classList.toggle("hidden", t!==name);
-  });
-  ["btnStock","btnSales","btnExp","btnDash"].forEach(id=>{
-    document.getElementById(id).classList.remove("bg-black","text-white");
-  });
-  const map = {stock:"btnStock", sales:"btnSales", exp:"btnExp", dash:"btnDash"};
-  document.getElementById(map[name]).classList.add("bg-black","text-white");
-  updateDashboard();
-}
-
-document.getElementById("btnStock").addEventListener("click", ()=>showTab("stock"));
-document.getElementById("btnSales").addEventListener("click", ()=>showTab("sales"));
-document.getElementById("btnExp").addEventListener("click", ()=>showTab("exp"));
-document.getElementById("btnDash").addEventListener("click", ()=>showTab("dash"));
-
-/* =======================
-   Gebühren + Gewinn
-   Gebühren auto: 10% + 0,42
-======================= */
-function calcAutoFees(sale){
-  const base = num(sale.sell) + num(sale.shipCustomer);
-  if(base <= 0) return 0;
-  return base * 0.10 + 0.42;
-}
-
-function saleProfit(sale){
-  const qty = Math.max(0, num(sale.qty) || 0);
-  const sell = num(sale.sell);
-  const shipCustomer = num(sale.shipCustomer);
-  const fees = num(sale.fees);
-  const shipCost = num(sale.shipCost);
-
-  // EK aus Lager (pro Stück)
-  const item = state.stock.find(x=>x.id===sale.itemId);
-  const ek = item ? num(item.ek) : 0;
-
-  return (sell + shipCustomer) - (ek * qty) - fees - shipCost;
-}
-
-/* =======================
-   Render (nur bei Add/Del/Import)
-   -> KEIN Re-Render bei jedem Tippen
-======================= */
-function renderAll(){
-  renderStock();
-  renderSales();
-  renderExpenses();
-  updateDashboard();
-}
-
-/* =======================
-   Lager
-======================= */
-document.getElementById("addStockBtn").addEventListener("click", ()=>{
-  state.stock.unshift({ id: uid(), name:"", ek:"", qty:"1", active:true, edit:true });
-  saveState();
-  renderStock();
-});
-
-function toggleStockEdit(id){
-  const it = state.stock.find(x=>x.id===id);
-  if(!it) return;
-  it.edit = !it.edit;
-  saveState();
-  renderStock();
-}
-
-function delOrDeactivateStock(id){
-  const used = state.sales.some(s=>s.itemId === id);
-  const it = state.stock.find(x=>x.id===id);
-  if(!it) return;
-
-  if(used){
-    if(confirm("Dieser Artikel wurde bereits verkauft.\n\nStatt löschen wird er deaktiviert (nicht mehr im Dropdown).\nFortfahren?")){
-      it.active = false;
-      it.edit = false;
-      saveState();
-      renderAll();
-    }
-  } else {
-    if(confirm("Artikel wirklich löschen?")){
-      state.stock = state.stock.filter(x=>x.id!==id);
-      saveState();
-      renderAll();
-    }
-  }
-}
-
-function stockOptionsHtml(selectedId){
-  const opts = [`<option value="">Bitte wählen…</option>`];
-
-  for(const it of state.stock){
-    const isSelected = it.id === selectedId;
-    const isActive = it.active !== false;
-
-    // deaktivierte nur anzeigen, wenn in bestehendem Verkauf ausgewählt
-    if(!isActive && !isSelected) continue;
-
-    const q = num(it.qty)||0;
-    const label = `${it.name || "(ohne Name)"} • Bestand: ${q}` + (isActive ? "" : " (deaktiviert)");
-    opts.push(`<option value="${it.id}" ${isSelected ? "selected":""}>${esc(label)}</option>`);
-  }
-  return opts.join("");
-}
-
-function renderStock(){
-  const wrap = document.getElementById("stockList");
-  wrap.innerHTML = "";
-
-  for(const it of state.stock){
-    const qty = num(it.qty)||0;
-    const ek = num(it.ek)||0;
-
-    wrap.insertAdjacentHTML("beforeend", `
-      <div class="bg-white p-4 rounded-2xl shadow space-y-3" data-stock-id="${it.id}">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <div class="font-semibold truncate">${esc(it.name || "Ohne Name")}</div>
-            <div class="text-xs text-gray-500">
-              Bestand: <b>${qty}</b> • EK/Stk: <b>${euro(ek)}</b>
-              ${it.active===false ? `<span class="text-red-600"> • Deaktiviert</span>` : ""}
-            </div>
-          </div>
-
-          <div class="flex gap-2 shrink-0">
-            <button type="button"
-              class="text-xs px-3 py-2 rounded-xl ${it.edit ? "bg-gray-200" : "bg-black text-white"}"
-              onclick="toggleStockEdit('${it.id}')">
-              ${it.edit ? "Fertig" : "Bearbeiten"}
-            </button>
-
-            <button type="button"
-              class="text-xs bg-red-600 text-white px-3 py-2 rounded-xl"
-              onclick="delOrDeactivateStock('${it.id}')">
-              Löschen
-            </button>
-          </div>
-        </div>
-
-        ${it.edit ? `
-        <div class="space-y-2">
-          <input class="w-full border p-2 rounded-xl" placeholder="Artikelname"
-            value="${esc(it.name)}"
-            data-field="name">
-
-          <div class="grid grid-cols-2 gap-2">
-            <input inputmode="decimal" class="w-full border p-2 rounded-xl" placeholder="EK pro Stück"
-              value="${esc(it.ek)}"
-              data-field="ek">
-            <input inputmode="numeric" class="w-full border p-2 rounded-xl" placeholder="Bestand"
-              value="${esc(it.qty)}"
-              data-field="qty">
-          </div>
-        </div>
-        ` : ``}
-      </div>
-    `);
+  function saveRows(rows){
+    localStorage.setItem(LS_KEY, JSON.stringify(rows));
   }
 
-  // Input-Listener NUR setzen (kein render beim Tippen)
-  wrap.querySelectorAll("[data-stock-id] input[data-field]").forEach(inp=>{
-    inp.addEventListener("input", (e)=>{
-      const card = e.target.closest("[data-stock-id]");
-      const id = card.getAttribute("data-stock-id");
-      const field = e.target.getAttribute("data-field");
-      const it = state.stock.find(x=>x.id===id);
-      if(!it) return;
-      it[field] = e.target.value;
-      saveState();
-      // Dashboard darf live aktualisieren
-      updateDashboard();
-      // Wenn Lagername geändert wurde, dropdown labels ändern -> wir lassen es erst beim nächsten Render (oder Tabwechsel)
-    });
-  });
-}
+  function calcRow(r){
+    const feePct = toNum(feePctEl.value)/100;
+    const taxPct = toNum(taxPctEl.value)/100;
 
-/* =======================
-   Verkäufe
-======================= */
-document.getElementById("addSaleBtn").addEventListener("click", ()=>{
-  state.sales.unshift({
-    id: uid(),
-    date: today(),
-    itemId: "",
-    qty: "1",
-    sell: "",
-    shipCustomer: "",
-    fees: "",
-    shipCost: ""
-  });
-  saveState();
-  renderSales();
-});
+    const buy = toNum(r.buy);
+    const sell = toNum(r.sell);
 
-function deleteSale(id){
-  if(!confirm("Verkauf löschen?")) return;
-  state.sales = state.sales.filter(x=>x.id!==id);
-  saveState();
-  renderAll();
-}
+    const fee = sell * feePct;
+    const profit = sell - buy - fee;
+    const tax = Math.max(profit, 0) * taxPct;
+    const net = profit - tax;
 
-function renderSales(){
-  const wrap = document.getElementById("saleList");
-  wrap.innerHTML = "";
-
-  for(const s of state.sales){
-    const p = saleProfit(s);
-    const tax = p>0 ? p*0.4 : 0;
-    const net = p - tax;
-
-    wrap.insertAdjacentHTML("beforeend", `
-      <div class="bg-white p-4 rounded-2xl shadow space-y-3" data-sale-id="${s.id}">
-        <div class="flex items-center justify-between">
-          <div class="text-sm font-semibold">Verkauf</div>
-          <button type="button" class="text-xs bg-red-600 text-white px-3 py-2 rounded-xl"
-            onclick="deleteSale('${s.id}')">Löschen</button>
-        </div>
-
-        <input type="date" class="w-full border p-2 rounded-xl" value="${esc(s.date)}" data-field="date">
-
-        <select class="w-full border p-2 rounded-xl" data-field="itemId">
-          ${stockOptionsHtml(s.itemId)}
-        </select>
-
-        <div class="grid grid-cols-2 gap-2">
-          <input inputmode="numeric" class="w-full border p-2 rounded-xl" placeholder="Menge"
-            value="${esc(s.qty)}" data-field="qty">
-
-          <input inputmode="decimal" class="w-full border p-2 rounded-xl" placeholder="Verkauf (ohne Versand)"
-            value="${esc(s.sell)}" data-field="sell">
-
-          <input inputmode="decimal" class="w-full border p-2 rounded-xl" placeholder="Versand vom Kunden"
-            value="${esc(s.shipCustomer)}" data-field="shipCustomer">
-
-          <input inputmode="decimal" class="w-full border p-2 rounded-xl" placeholder="Gebühren (auto 10% + 0,42)"
-            value="${esc(s.fees)}" data-field="fees">
-
-          <input inputmode="decimal" class="w-full border p-2 rounded-xl col-span-2" placeholder="Versandkosten (deine)"
-            value="${esc(s.shipCost)}" data-field="shipCost">
-        </div>
-
-        <div class="text-sm space-y-1">
-          <div>Gewinn: <b data-out="profit">${euro(p)}</b></div>
-          <div>40% Rücklage: <b data-out="tax">${euro(tax)}</b></div>
-          <div>Netto (Anzeige): <b data-out="net">${euro(net)}</b></div>
-        </div>
-      </div>
-    `);
+    return {buy, sell, fee, profit, tax, net};
   }
 
-  // Listener: speichern ohne render
-  wrap.querySelectorAll("[data-sale-id]").forEach(card=>{
-    const id = card.getAttribute("data-sale-id");
-    const sale = state.sales.find(x=>x.id===id);
-    if(!sale) return;
+  function render(){
+    const rows = loadRows();
+    tb.innerHTML = "";
 
-    const outProfit = card.querySelector('[data-out="profit"]');
-    const outTax = card.querySelector('[data-out="tax"]');
-    const outNet = card.querySelector('[data-out="net"]');
+    let sumBuy=0, sumSell=0, sumFee=0, sumProfit=0, sumTax=0, sumNet=0;
 
-    // date
-    card.querySelectorAll("input[data-field], select[data-field]").forEach(el=>{
-      el.addEventListener("input", ()=>handleSaleChange(id, el));
-      el.addEventListener("change", ()=>handleSaleChange(id, el));
+    rows.forEach((r, idx) => {
+      const c = calcRow(r);
+      sumBuy += c.buy; sumSell += c.sell; sumFee += c.fee;
+      sumProfit += c.profit; sumTax += c.tax; sumNet += c.net;
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><input value="${r.no ?? ""}" placeholder="1" data-k="no" data-i="${idx}"></td>
+        <td><input value="${r.date ?? ""}" placeholder="11. Jan" data-k="date" data-i="${idx}"></td>
+        <td><input value="${r.item ?? ""}" placeholder="N3DS XL Black" data-k="item" data-i="${idx}"></td>
+        <td><input value="${r.seller ?? ""}" placeholder="Vinted/..." data-k="seller" data-i="${idx}"></td>
+        <td class="num"><input value="${r.buy ?? ""}" placeholder="0,00" data-k="buy" data-i="${idx}"></td>
+        <td><input value="${r.pay ?? ""}" placeholder="Paypal/Klarna" data-k="pay" data-i="${idx}"></td>
+        <td class="num"><input value="${r.sell ?? ""}" placeholder="0,00" data-k="sell" data-i="${idx}"></td>
+        <td class="num">${fmt(c.fee)}</td>
+        <td class="num">${fmt(c.profit)}</td>
+        <td class="num">${fmt(c.tax)}</td>
+        <td class="num">${fmt(c.net)}</td>
+        <td><input value="${r.note ?? ""}" placeholder="" data-k="note" data-i="${idx}"></td>
+        <td><button class="secondary" data-del="${idx}">Löschen</button></td>
+      `;
+      tb.appendChild(tr);
     });
 
-    function refreshComputed(){
-      const p = saleProfit(sale);
-      const tax = p>0 ? p*0.4 : 0;
-      const net = p - tax;
-      outProfit.textContent = euro(p);
-      outTax.textContent = euro(tax);
-      outNet.textContent = euro(net);
-      updateDashboard();
-    }
+    document.getElementById("sumBuy").textContent = fmt(sumBuy);
+    document.getElementById("sumSell").textContent = fmt(sumSell);
+    document.getElementById("sumFee").textContent = fmt(sumFee);
+    document.getElementById("sumProfit").textContent = fmt(sumProfit);
+    document.getElementById("sumTax").textContent = fmt(sumTax);
+    document.getElementById("sumNet").textContent = fmt(sumNet);
+  }
 
-    // initial compute refresh not needed
-    refreshComputed();
+  function addRow(){
+    const rows = loadRows();
+    rows.push({ no: String(rows.length+1), date:"", item:"", seller:"", buy:"", pay:"", sell:"", note:"" });
+    saveRows(rows);
+    render();
+  }
+
+  document.getElementById("addRow").addEventListener("click", addRow);
+
+  document.getElementById("clear").addEventListener("click", () => {
+    localStorage.removeItem(LS_KEY);
+    render();
   });
-}
 
-function handleSaleChange(id, el){
-  const sale = state.sales.find(x=>x.id===id);
-  if(!sale) return;
-
-  const field = el.getAttribute("data-field");
-  const value = el.value;
-
-  // Artikel gewählt
-  if(field === "itemId"){
-    sale.itemId = value;
-    saveState();
-    // Gebühren evtl. neu
-    const auto = calcAutoFees(sale);
-    if(auto > 0) sale.fees = auto.toFixed(2);
-    saveState();
-    // Dropdowns können sich ändern, aber wir rendern NICHT live -> ok
-  } else {
-    sale[field] = value;
-
-    // Auto-Gebühren wenn sell oder shipCustomer geändert
-    if(field === "sell" || field === "shipCustomer"){
-      const auto = calcAutoFees(sale);
-      sale.fees = auto > 0 ? auto.toFixed(2) : "";
+  document.addEventListener("input", (e) => {
+    const t = e.target;
+    if (t && t.dataset && t.dataset.k){
+      const rows = loadRows();
+      const i = Number(t.dataset.i);
+      const k = t.dataset.k;
+      rows[i][k] = t.value;
+      saveRows(rows);
+      render();
     }
-    saveState();
-  }
-
-  // Update nur diese Karte & Dashboard
-  // (wir nutzen direkt die bestehende DOM-Karte: Rechenwerte werden neu gesetzt durch renderSales()-Listener refreshComputed)
-  // Schnell: recompute anhand aktueller Karte:
-  const card = el.closest("[data-sale-id]");
-  if(card){
-    const p = saleProfit(sale);
-    const tax = p>0 ? p*0.4 : 0;
-    const net = p - tax;
-    card.querySelector('[data-out="profit"]').textContent = euro(p);
-    card.querySelector('[data-out="tax"]').textContent = euro(tax);
-    card.querySelector('[data-out="net"]').textContent = euro(net);
-  }
-  updateDashboard();
-}
-
-/* =======================
-   Ausgaben
-======================= */
-document.getElementById("addExpBtn").addEventListener("click", ()=>{
-  state.expenses.unshift({ id: uid(), date: today(), title:"", amount:"" });
-  saveState();
-  renderExpenses();
-});
-
-function deleteExpense(id){
-  if(!confirm("Ausgabe löschen?")) return;
-  state.expenses = state.expenses.filter(x=>x.id!==id);
-  saveState();
-  renderAll();
-}
-
-function renderExpenses(){
-  const wrap = document.getElementById("expList");
-  wrap.innerHTML = "";
-
-  for(const e of state.expenses){
-    wrap.insertAdjacentHTML("beforeend", `
-      <div class="bg-white p-4 rounded-2xl shadow space-y-3" data-exp-id="${e.id}">
-        <div class="flex items-center justify-between">
-          <div class="text-sm font-semibold">Ausgabe</div>
-          <button type="button" class="text-xs bg-red-600 text-white px-3 py-2 rounded-xl"
-            onclick="deleteExpense('${e.id}')">Löschen</button>
-        </div>
-
-        <input type="date" class="w-full border p-2 rounded-xl" value="${esc(e.date)}" data-field="date">
-        <input class="w-full border p-2 rounded-xl" placeholder="Beschreibung" value="${esc(e.title)}" data-field="title">
-        <input inputmode="decimal" class="w-full border p-2 rounded-xl" placeholder="Betrag (€)" value="${esc(e.amount)}" data-field="amount">
-      </div>
-    `);
-  }
-
-  wrap.querySelectorAll("[data-exp-id] input[data-field]").forEach(inp=>{
-    inp.addEventListener("input", (ev)=>{
-      const card = ev.target.closest("[data-exp-id]");
-      const id = card.getAttribute("data-exp-id");
-      const field = ev.target.getAttribute("data-field");
-      const e = state.expenses.find(x=>x.id===id);
-      if(!e) return;
-      e[field] = ev.target.value;
-      saveState();
-      updateDashboard();
-    });
   });
-}
 
-/* =======================
-   Dashboard
-======================= */
-function updateDashboard(){
-  // Gewinn = Summe Verkäufe - Ausgaben
-  let salesProfit = 0;
-  for(const s of state.sales) salesProfit += saleProfit(s);
-
-  let expSum = 0;
-  for(const e of state.expenses) expSum += num(e.amount);
-
-  const profit = salesProfit - expSum;
-  const tax = profit>0 ? profit*0.4 : 0;
-  const net = profit - tax;
-
-  let stockValue = 0;
-  for(const it of state.stock){
-    stockValue += num(it.ek) * num(it.qty);
-  }
-
-  document.getElementById("dashProfit").textContent = euro(profit);
-  document.getElementById("dashTax").textContent = euro(tax);
-  document.getElementById("dashNet").textContent = euro(net);
-  document.getElementById("dashStockValue").textContent = euro(stockValue);
-}
-
-/* =======================
-   PDF Import (dein Format)
-   Tabelle: Artikelnummer | Datum | Artikel/Beschreibung | Verkäufer/Plattform | Kaufpreis
-======================= */
-document.getElementById("pdfBtn").addEventListener("click", ()=>{
-  document.getElementById("pdfInput").click();
-});
-
-document.getElementById("pdfInput").addEventListener("change", async (e)=>{
-  const file = e.target.files?.[0];
-  if(!file) return;
-
-  try{
-    const text = await pdfToText(file);
-    const imported = parsePressAToBuy(text);
-
-    if(imported.length === 0){
-      alert("Keine Artikel erkannt. (Parser erwartet: Nummer Datum Artikel Verkäufer Preis)");
-      return;
+  document.addEventListener("click", (e) => {
+    const btn = e.target;
+    if (btn && btn.dataset && btn.dataset.del !== undefined){
+      const i = Number(btn.dataset.del);
+      const rows = loadRows();
+      rows.splice(i,1);
+      // Nummern neu setzen
+      rows.forEach((r, idx) => { if (!r.no || r.no === String(idx+2)) r.no = String(idx+1); });
+      saveRows(rows);
+      render();
     }
+  });
 
-    importToStock(imported);
-    saveState();
-    renderAll();
+  feePctEl.addEventListener("input", render);
+  taxPctEl.addEventListener("input", render);
 
-    alert(`Import fertig: ${imported.length} Zeilen erkannt → Lager aktualisiert.`);
-  } catch(err){
-    console.error(err);
-    alert("PDF Import fehlgeschlagen. Wenn du willst, schick mir ein Beispiel-PDF erneut.");
-  } finally {
-    // damit erneutes Importieren derselben Datei möglich ist
-    e.target.value = "";
-  }
-});
-
-async function pdfToText(file){
-  const buf = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({data: new Uint8Array(buf)}).promise;
-
-  let full = "";
-  for(let p=1; p<=pdf.numPages; p++){
-    const page = await pdf.getPage(p);
-    const content = await page.getTextContent();
-    full += content.items.map(i=>i.str).join(" ") + "\n";
-  }
-  return full;
-}
-
-/*
-  Beispielzeilen aus deinem PDF:
-  1 11. Jan N3DS XL Black Vinted/houdouby 198,89
-  17 11. Feb PSP 2004 Black Vinted/giandox 22,2
-*/
-function parsePressAToBuy(text){
-  const lines = text
-    .split("\n")
-    .map(l=>l.trim())
-    .filter(Boolean);
-
-  const out = [];
-
-  // Regex: nr + datum + artikel + seller/plattform + preis
-  // datum: "11. Jan" / "01. Feb"
-  const rowRe = /^(\d+)\s+(\d{1,2}\.\s*[A-Za-zÄÖÜäöü]{3,})\s+(.+?)\s+([A-Za-z]+\/[^\s]+)\s+(\d+(?:,\d+)?|\d+)$/;
-
-  for(const line of lines){
-    // Skip header
-    if(line.startsWith("Artikelnummer")) continue;
-    if(line.startsWith("Zahlungsart")) continue;
-
-    const m = line.match(rowRe);
-    if(!m) continue;
-
-    const nr = m[1];
-    const dateShort = m[2];         // "11. Jan"
-    const name = m[3].trim();       // Artikel/Beschreibung
-    const seller = m[4].trim();     // "Vinted/..."
-    const price = m[5].trim();      // "198,89" oder "22,2"
-
-    out.push({
-      sourceRow: nr,
-      purchaseDate: dateShort,
-      name,
-      seller,
-      ek: price
-    });
-  }
-  return out;
-}
-
-function importToStock(items){
-  // gleiche Artikel zusammenfassen (Name exakt)
-  for(const it of items){
-    const name = it.name;
-    const ek = it.ek;
-
-    let existing = state.stock.find(s => (s.name || "").trim() === name.trim());
-
-    if(existing){
-      // Menge +1
-      existing.qty = String((num(existing.qty)||0) + 1);
-      // EK: wir lassen den bestehenden EK (oder du kannst hier den letzten überschreiben)
-      if(!existing.ek) existing.ek = ek;
-    } else {
-      state.stock.unshift({
-        id: uid(),
-        name,
-        ek,       // EK aus PDF
-        qty: "1",
-        active: true,
-        edit: false
-      });
-    }
-  }
-}
-
-/* =======================
-   Start
-======================= */
-renderAll();
-showTab("stock");
+  // initial
+  if (loadRows().length === 0) addRow();
+  else render();
 </script>
 </body>
 </html>
