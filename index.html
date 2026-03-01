@@ -1,123 +1,130 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reseller Rechner</title>
+
+<style>
+body{font-family:system-ui;margin:15px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{border-bottom:1px solid #ddd;padding:6px}
+th{background:#f4f4f4;text-align:left}
+input{width:100%;padding:5px}
+.num{text-align:right}
+button{padding:6px 10px;margin:5px 0}
+tfoot td{font-weight:bold;border-top:2px solid #000}
+</style>
+</head>
+
+<body>
+
+<h2>Reseller Rechner (10% eBay / 40% Steuer)</h2>
+
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Artikel</th>
+<th class="num">Kauf €</th>
+<th class="num">Verkauf €</th>
+<th class="num">eBay 10%</th>
+<th class="num">Gewinn</th>
+<th class="num">Steuer 40%</th>
+<th class="num">Netto</th>
+</tr>
+</thead>
+
+<tbody id="tbody"></tbody>
+
+<tfoot>
+<tr>
+<td colspan="2">SUMME</td>
+<td class="num" id="sumBuy">0</td>
+<td class="num" id="sumSell">0</td>
+<td class="num" id="sumFee">0</td>
+<td class="num" id="sumProfit">0</td>
+<td class="num" id="sumTax">0</td>
+<td class="num" id="sumNet">0</td>
+</tr>
+</tfoot>
+</table>
+
 <script>
-  const LS_KEY = "reseller_rows_v1";
 
-  const fmt = (n) => (isFinite(n) ? n : 0).toLocaleString("de-DE", {minimumFractionDigits:2, maximumFractionDigits:2});
-  const toNum = (v) => {
-    if (typeof v === "number") return v;
-    if (!v) return 0;
-    const s = String(v).trim().replace(/\./g, "").replace(",", ".");
-    const n = Number(s);
-    return isFinite(n) ? n : 0;
-  };
+const rows = [
+{no:1,item:"N3DS XL Black",buy:198.89},
+{no:2,item:"N3DS XL Blau",buy:167.39},
+{no:3,item:"3DS Black/Ovp",buy:105.39},
+{no:4,item:"DSi XL Oro",buy:35.83},
+{no:5,item:"DSi XL Oro",buy:35.83},
+{no:6,item:"N3DS XL Orange/Ovp",buy:217.65},
+{no:7,item:"PSP 2004 Black",buy:55.14},
+{no:8,item:"PS Vita Blau",buy:105.39},
+{no:9,item:"Xbox 360/Ovp",buy:47.64},
+{no:10,item:"GBA SP Silber",buy:52.89},
+{no:11,item:"GBA White",buy:68.99},
+{no:12,item:"GBA IPS V2",buy:62.05},
+{no:13,item:"GB Classic Rot",buy:51.20},
+{no:14,item:"GB Classic Grün",buy:51.20},
+{no:15,item:"Switch Blau/Gelb",buy:79.14},
+{no:16,item:"PSP 2004",buy:22.20},
+{no:17,item:"PSP 3004",buy:22.20},
+{no:18,item:"PSP 3004 Türkis",buy:49.65},
+{no:19,item:"PS Vita Black",buy:74.75}
+];
 
-  const feePctEl = document.getElementById("feePct");
-  const taxPctEl = document.getElementById("taxPct");
-  const tb = document.getElementById("tb");
+function render(){
+let tbody=document.getElementById("tbody");
+tbody.innerHTML="";
 
-  // ✅ DEINE PDF DATEN
-  const defaultRows = [
-    {no:"1", date:"11. Jan", item:"N3DS XL Black", seller:"Vinted/houdouby", buy:"198,89", pay:"Paypal"},
-    {no:"20", date:"13. Jan", item:"N3DS XL Blau", seller:"Vinted/1234kev1234", buy:"167,39", pay:"Paypal"},
-    {no:"2", date:"23. Jan", item:"3DS Black/Ovp", seller:"Vinted/leocoul", buy:"105,39", pay:"Klarna"},
-    {no:"3", date:"24. Jan", item:"DS i XL Oro", seller:"Vinted/soniaj230", buy:"35,83", pay:"Klarna"},
-    {no:"4", date:"24. Jan", item:"DS Ii XL Oro", seller:"Vinted/soniaj230", buy:"35,83", pay:"Klarna"},
-    {no:"9", date:"26. Jan", item:"N3DS XL Orange/Ovp", seller:"Vinted/fradel49", buy:"217,65", pay:"Klarna"},
-    {no:"8", date:"27. Jan", item:"PSP 2004/Ovp/Black", seller:"Vinted/sonnenschein33333", buy:"55,14", pay:"Klarna"},
-    {no:"6", date:"31. Jan", item:"PS Vita Blau", seller:"Vinted/mohamedali5555", buy:"105,39", pay:"Klarna"},
-    {no:"7", date:"31. Jan", item:"Xbox 360/Ovp", seller:"Vinted/vinvin69130", buy:"47,64", pay:"Klarna"},
-    {no:"5", date:"01. Feb", item:"GBA SP Silber/Muster", seller:"Vinted/lucie100221", buy:"52,89", pay:"Klarna"},
-    {no:"10", date:"08. Feb", item:"GBA White", seller:"Vinted/smilo1986", buy:"68,99", pay:"Klarna"},
-    {no:"11", date:"08. Feb", item:"Pokemon Saphir/GBA", seller:"Vinted/smilo1986", buy:"0", pay:"Klarna"},
-    {no:"14", date:"08. Feb", item:"GBA/Black/IPS/V2", seller:"Vinted/katherina8888", buy:"62,05", pay:"Klarna"},
-    {no:"12", date:"09. Feb", item:"GB Classic/Rot", seller:"Vinted/charlinejill", buy:"51,20", pay:"Klarna"},
-    {no:"13", date:"09. Feb", item:"GB Classic/Grün", seller:"Vinted/charlinejill", buy:"51,20", pay:"Klarna"},
-    {no:"15", date:"10. Feb", item:"Switch/Blau/Gelb/Joyc.", seller:"Vinted/noemie.77440", buy:"79,14", pay:"Klarna"},
-    {no:"17", date:"11. Feb", item:"PSP 2004 Black", seller:"Vinted/giandox", buy:"22,20", pay:"Klarna"},
-    {no:"18", date:"11. Feb", item:"PSP 3004 Black", seller:"Vinted/giandox", buy:"22,20", pay:"Klarna"},
-    {no:"19", date:"13. Feb", item:"PSP 3004 Türkis", seller:"Vinted/alessiom50", buy:"49,65", pay:"Klarna"},
-    {no:"16", date:"15. Feb", item:"PS Vita Black", seller:"Vinted/ronatmel", buy:"74,75", pay:"Klarna"}
-  ];
+let sumBuy=0,sumSell=0,sumFee=0,sumProfit=0,sumTax=0,sumNet=0;
 
-  function loadRows(){
-    let data = localStorage.getItem(LS_KEY);
-    if(!data){
-      localStorage.setItem(LS_KEY, JSON.stringify(defaultRows));
-      return defaultRows;
-    }
-    return JSON.parse(data);
-  }
+rows.forEach((r,i)=>{
 
-  function saveRows(rows){
-    localStorage.setItem(LS_KEY, JSON.stringify(rows));
-  }
+let sell=r.sell||0;
+let fee=sell*0.10;
+let profit=sell-r.buy-fee;
+let tax=profit>0?profit*0.40:0;
+let net=profit-tax;
 
-  function calcRow(r){
-    const feePct = toNum(feePctEl.value)/100;
-    const taxPct = toNum(taxPctEl.value)/100;
+sumBuy+=r.buy;
+sumSell+=sell;
+sumFee+=fee;
+sumProfit+=profit;
+sumTax+=tax;
+sumNet+=net;
 
-    const buy = toNum(r.buy);
-    const sell = toNum(r.sell);
+tbody.innerHTML+=`
+<tr>
+<td>${r.no}</td>
+<td>${r.item}</td>
+<td class="num">${r.buy.toFixed(2)}</td>
+<td><input type="number" step="0.01" value="${sell}" onchange="updateSell(${i},this.value)"></td>
+<td class="num">${fee.toFixed(2)}</td>
+<td class="num">${profit.toFixed(2)}</td>
+<td class="num">${tax.toFixed(2)}</td>
+<td class="num">${net.toFixed(2)}</td>
+</tr>
+`;
+});
 
-    const fee = sell * feePct;
-    const profit = sell - buy - fee;
-    const tax = Math.max(profit, 0) * taxPct;
-    const net = profit - tax;
+document.getElementById("sumBuy").innerText=sumBuy.toFixed(2);
+document.getElementById("sumSell").innerText=sumSell.toFixed(2);
+document.getElementById("sumFee").innerText=sumFee.toFixed(2);
+document.getElementById("sumProfit").innerText=sumProfit.toFixed(2);
+document.getElementById("sumTax").innerText=sumTax.toFixed(2);
+document.getElementById("sumNet").innerText=sumNet.toFixed(2);
+}
 
-    return {buy, sell, fee, profit, tax, net};
-  }
+function updateSell(i,value){
+rows[i].sell=parseFloat(value)||0;
+render();
+}
 
-  function render(){
-    const rows = loadRows();
-    tb.innerHTML = "";
+render();
 
-    let sumBuy=0, sumSell=0, sumFee=0, sumProfit=0, sumTax=0, sumNet=0;
-
-    rows.forEach((r, idx) => {
-      const c = calcRow(r);
-      sumBuy += c.buy; sumSell += c.sell; sumFee += c.fee;
-      sumProfit += c.profit; sumTax += c.tax; sumNet += c.net;
-
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${r.no}</td>
-        <td>${r.date}</td>
-        <td>${r.item}</td>
-        <td>${r.seller}</td>
-        <td class="num">${fmt(c.buy)}</td>
-        <td>${r.pay}</td>
-        <td><input value="${r.sell ?? ""}" placeholder="Verkauf €" data-k="sell" data-i="${idx}"></td>
-        <td class="num">${fmt(c.fee)}</td>
-        <td class="num">${fmt(c.profit)}</td>
-        <td class="num">${fmt(c.tax)}</td>
-        <td class="num">${fmt(c.net)}</td>
-        <td></td>
-        <td></td>
-      `;
-      tb.appendChild(tr);
-    });
-
-    document.getElementById("sumBuy").textContent = fmt(sumBuy);
-    document.getElementById("sumSell").textContent = fmt(sumSell);
-    document.getElementById("sumFee").textContent = fmt(sumFee);
-    document.getElementById("sumProfit").textContent = fmt(sumProfit);
-    document.getElementById("sumTax").textContent = fmt(sumTax);
-    document.getElementById("sumNet").textContent = fmt(sumNet);
-  }
-
-  document.addEventListener("input", (e) => {
-    const t = e.target;
-    if (t && t.dataset && t.dataset.k){
-      const rows = loadRows();
-      const i = Number(t.dataset.i);
-      const k = t.dataset.k;
-      rows[i][k] = t.value;
-      saveRows(rows);
-      render();
-    }
-  });
-
-  feePctEl.addEventListener("input", render);
-  taxPctEl.addEventListener("input", render);
-
-  render();
 </script>
+
+</body>
+</html>
