@@ -1,160 +1,350 @@
 <!doctype html>
 <html lang="de">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Reseller Rechner</title>
-
-<style>
-body{font-family:system-ui;margin:15px}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{border-bottom:1px solid #ddd;padding:6px}
-th{background:#f4f4f4;text-align:left}
-input{width:100%;padding:5px}
-.num{text-align:right}
-button{padding:6px 10px;margin:5px 5px 5px 0}
-tfoot td{font-weight:bold;border-top:2px solid #000}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Artikel Übersicht</title>
+  <style>
+    :root { --radius: 16px; --shadow: 0 10px 30px rgba(0,0,0,.08); }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background:#f6f7fb; color:#111; }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 20px; display: grid; gap: 16px; }
+    h1 { margin: 6px 0 2px; font-size: 28px; }
+    .card { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); }
+    .card .pad { padding: 16px; }
+    .grid { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0,1fr)); }
+    @media (min-width: 900px) { .grid { grid-template-columns: repeat(4, minmax(0,1fr)); } }
+    label { font-size: 12px; color:#555; display:block; margin-bottom: 6px; }
+    input, select { width: 100%; padding: 10px 12px; border: 1px solid #e6e7ee; border-radius: 12px; background:#fff; outline: none; }
+    input:focus, select:focus { border-color: #b7b9ff; box-shadow: 0 0 0 4px rgba(120, 123, 255, .15); }
+    .btnrow { display:flex; gap: 10px; flex-wrap: wrap; }
+    button {
+      border: 0; padding: 10px 14px; border-radius: 12px; cursor: pointer;
+      background:#111; color:#fff; font-weight: 600;
+    }
+    button.secondary { background:#eef0f6; color:#111; }
+    button.danger { background:#ff3b30; }
+    button.small { padding: 8px 10px; border-radius: 10px; font-size: 12px; }
+    .tablewrap { overflow:auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 900px; }
+    th, td { text-align:left; padding: 10px 10px; border-bottom: 1px solid #eef0f6; font-size: 13px; vertical-align: top; }
+    th { font-size: 12px; color:#555; position: sticky; top: 0; background: #fff; }
+    .sumgrid { display:grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    @media (min-width: 900px) { .sumgrid { grid-template-columns: repeat(5, minmax(0,1fr)); } }
+    .kpi { background:#f6f7fb; border-radius: 14px; padding: 12px; }
+    .kpi .t { font-size: 12px; color:#666; }
+    .kpi .v { font-size: 16px; font-weight: 700; margin-top: 4px; }
+    .muted { color:#666; font-size: 12px; }
+    .right { text-align:right; }
+  </style>
 </head>
-
 <body>
+  <div class="wrap">
+    <h1>Artikel Business Übersicht</h1>
+    <div class="muted">Einträge werden automatisch lokal gespeichert (nur auf deinem Gerät).</div>
 
-<h2>Reseller Rechner (10% eBay / 40% Steuer)</h2>
+    <!-- Formular -->
+    <div class="card">
+      <div class="pad">
+        <div class="grid">
+          <div>
+            <label>Artikelnummer</label>
+            <input id="artikelnummer" placeholder="z.B. 12345" />
+          </div>
+          <div>
+            <label>Datum</label>
+            <input id="datum" type="date" />
+          </div>
+          <div style="grid-column: span 2;">
+            <label>Beschreibung</label>
+            <input id="beschreibung" placeholder="z.B. Nike Air Max Größe 44" />
+          </div>
 
-<button onclick="addItem()">+ Neues Produkt</button>
-<button onclick="resetData()">Alles löschen</button>
+          <div>
+            <label>Verkäufer / Käufer</label>
+            <input id="verkaufer" placeholder="z.B. Max" />
+          </div>
+          <div>
+            <label>Plattform</label>
+            <input id="plattform" placeholder="z.B. eBay / Kleinanzeigen" />
+          </div>
+          <div>
+            <label>Zahlungsart</label>
+            <input id="zahlungsart" placeholder="z.B. PayPal / Bar" />
+          </div>
 
-<table>
-<thead>
-<tr>
-<th>#</th>
-<th>Artikel</th>
-<th class="num">Kauf €</th>
-<th class="num">Verkauf €</th>
-<th class="num">eBay 10%</th>
-<th class="num">Gewinn</th>
-<th class="num">Steuer 40%</th>
-<th class="num">Netto</th>
-<th>❌</th>
-</tr>
-</thead>
+          <div>
+            <label>Kaufpreis (€)</label>
+            <input id="kaufpreis" inputmode="decimal" placeholder="0,00" />
+          </div>
+          <div>
+            <label>Verkaufspreis (€)</label>
+            <input id="verkaufspreis" inputmode="decimal" placeholder="0,00" />
+          </div>
+          <div>
+            <label>eBay Gebühren (€)</label>
+            <input id="ebayGebuehren" inputmode="decimal" placeholder="0,00" />
+          </div>
+          <div>
+            <label>Versandkosten (€)</label>
+            <input id="versandkosten" inputmode="decimal" placeholder="0,00" />
+          </div>
+        </div>
 
-<tbody id="tbody"></tbody>
+        <div style="margin-top:12px" class="btnrow">
+          <button id="saveBtn">Artikel hinzufügen</button>
+          <button id="resetBtn" class="secondary">Formular leeren</button>
+          <button id="exportBtn" class="secondary">CSV Export</button>
+          <button id="clearAllBtn" class="danger">Alles löschen</button>
+        </div>
+      </div>
+    </div>
 
-<tfoot>
-<tr>
-<td colspan="2">SUMME</td>
-<td class="num" id="sumBuy">0</td>
-<td class="num" id="sumSell">0</td>
-<td class="num" id="sumFee">0</td>
-<td class="num" id="sumProfit">0</td>
-<td class="num" id="sumTax">0</td>
-<td class="num" id="sumNet">0</td>
-<td></td>
-</tr>
-</tfoot>
-</table>
+    <!-- Summen -->
+    <div class="card">
+      <div class="pad">
+        <div class="sumgrid">
+          <div class="kpi"><div class="t">Kauf Gesamt</div><div class="v" id="sumKauf">0,00 €</div></div>
+          <div class="kpi"><div class="t">Verkauf Gesamt</div><div class="v" id="sumVerkauf">0,00 €</div></div>
+          <div class="kpi"><div class="t">eBay Gebühren</div><div class="v" id="sumEbay">0,00 €</div></div>
+          <div class="kpi"><div class="t">Versandkosten</div><div class="v" id="sumVersand">0,00 €</div></div>
+          <div class="kpi"><div class="t">Gesamt Gewinn (nach 40% Rücklage)</div><div class="v" id="sumGewinn">0,00 €</div></div>
+        </div>
+      </div>
+    </div>
 
-<script>
+    <!-- Tabelle -->
+    <div class="card">
+      <div class="pad tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nr</th>
+              <th>Datum</th>
+              <th>Beschreibung</th>
+              <th>Verkäufer</th>
+              <th>Plattform</th>
+              <th>Zahlungsart</th>
+              <th class="right">Kauf</th>
+              <th class="right">Verkauf</th>
+              <th class="right">eBay</th>
+              <th class="right">Versand</th>
+              <th class="right">Gewinn</th>
+              <th>Aktion</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
-const STORAGE_KEY = "reseller_app_data";
+  <script>
+    const LS_KEY = "artikelListe_v1";
+    let artikel = [];
+    let editIndex = null;
 
-let rows = loadData();
+    // Helpers
+    const € = (n) => new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n) + " €";
+    const toNum = (s) => {
+      if (s === null || s === undefined) return 0;
+      const cleaned = String(s).trim().replaceAll(".", "").replace(",", ".");
+      const n = parseFloat(cleaned);
+      return Number.isFinite(n) ? n : 0;
+    };
 
-function loadData(){
-let saved = localStorage.getItem(STORAGE_KEY);
-if(saved){
-return JSON.parse(saved);
-}
-return [];
-}
+    function berechne(item) {
+      const kauf = toNum(item.kaufpreis);
+      const verkauf = toNum(item.verkaufspreis);
+      const ebay = toNum(item.ebayGebuehren);
+      const versand = toNum(item.versandkosten);
 
-function saveData(){
-localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
-}
+      const gewinnOhneGebuehren = verkauf - kauf;
+      const gesamt = gewinnOhneGebuehren - ebay - versand;
+      const steuerRuecklage = gesamt * 0.4;
+      const gewinn = gesamt - steuerRuecklage;
 
-function render(){
+      return { ...item, gewinnOhneGebuehren, gesamt, steuerRuecklage, gewinn };
+    }
 
-let tbody=document.getElementById("tbody");
-tbody.innerHTML="";
+    function load() {
+      try {
+        const raw = localStorage.getItem(LS_KEY);
+        artikel = raw ? JSON.parse(raw) : [];
+      } catch { artikel = []; }
+    }
 
-let sumBuy=0,sumSell=0,sumFee=0,sumProfit=0,sumTax=0,sumNet=0;
+    function save() {
+      localStorage.setItem(LS_KEY, JSON.stringify(artikel));
+    }
 
-rows.forEach((r,i)=>{
+    function getForm() {
+      return {
+        artikelnummer: document.getElementById("artikelnummer").value,
+        datum: document.getElementById("datum").value,
+        beschreibung: document.getElementById("beschreibung").value,
+        verkaufer: document.getElementById("verkaufer").value,
+        plattform: document.getElementById("plattform").value,
+        zahlungsart: document.getElementById("zahlungsart").value,
+        kaufpreis: document.getElementById("kaufpreis").value,
+        verkaufspreis: document.getElementById("verkaufspreis").value,
+        ebayGebuehren: document.getElementById("ebayGebuehren").value,
+        versandkosten: document.getElementById("versandkosten").value,
+      };
+    }
 
-let fee=r.sell*0.10;
-let profit=r.sell-r.buy-fee;
-let tax=profit>0?profit*0.40:0;
-let net=profit-tax;
+    function setForm(v) {
+      document.getElementById("artikelnummer").value = v.artikelnummer ?? "";
+      document.getElementById("datum").value = v.datum ?? "";
+      document.getElementById("beschreibung").value = v.beschreibung ?? "";
+      document.getElementById("verkaufer").value = v.verkaufer ?? "";
+      document.getElementById("plattform").value = v.plattform ?? "";
+      document.getElementById("zahlungsart").value = v.zahlungsart ?? "";
+      document.getElementById("kaufpreis").value = v.kaufpreis ?? "";
+      document.getElementById("verkaufspreis").value = v.verkaufspreis ?? "";
+      document.getElementById("ebayGebuehren").value = v.ebayGebuehren ?? "";
+      document.getElementById("versandkosten").value = v.versandkosten ?? "";
+    }
 
-sumBuy+=r.buy;
-sumSell+=r.sell;
-sumFee+=fee;
-sumProfit+=profit;
-sumTax+=tax;
-sumNet+=net;
+    function resetForm() {
+      setForm({});
+      editIndex = null;
+      document.getElementById("saveBtn").textContent = "Artikel hinzufügen";
+    }
 
-tbody.innerHTML+=`
-<tr>
-<td>${i+1}</td>
-<td><input value="${r.item}" oninput="updateItem(${i},this.value)"></td>
-<td><input type="number" step="0.01" value="${r.buy}" oninput="updateBuy(${i},this.value)"></td>
-<td><input type="number" step="0.01" value="${r.sell}" oninput="updateSell(${i},this.value)"></td>
-<td class="num">${fee.toFixed(2)}</td>
-<td class="num">${profit.toFixed(2)}</td>
-<td class="num">${tax.toFixed(2)}</td>
-<td class="num">${net.toFixed(2)}</td>
-<td><button onclick="deleteItem(${i})">X</button></td>
-</tr>
-`;
-});
+    function render() {
+      const tbody = document.getElementById("tbody");
+      tbody.innerHTML = "";
 
-document.getElementById("sumBuy").innerText=sumBuy.toFixed(2);
-document.getElementById("sumSell").innerText=sumSell.toFixed(2);
-document.getElementById("sumFee").innerText=sumFee.toFixed(2);
-document.getElementById("sumProfit").innerText=sumProfit.toFixed(2);
-document.getElementById("sumTax").innerText=sumTax.toFixed(2);
-document.getElementById("sumNet").innerText=sumNet.toFixed(2);
+      artikel.forEach((a, i) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${escapeHtml(a.artikelnummer || "")}</td>
+          <td>${escapeHtml(a.datum || "")}</td>
+          <td>${escapeHtml(a.beschreibung || "")}</td>
+          <td>${escapeHtml(a.verkaufer || "")}</td>
+          <td>${escapeHtml(a.plattform || "")}</td>
+          <td>${escapeHtml(a.zahlungsart || "")}</td>
+          <td class="right">${€(toNum(a.kaufpreis))}</td>
+          <td class="right">${€(toNum(a.verkaufspreis))}</td>
+          <td class="right">${€(toNum(a.ebayGebuehren))}</td>
+          <td class="right">${€(toNum(a.versandkosten))}</td>
+          <td class="right"><b>${€(a.gewinn || 0)}</b></td>
+          <td>
+            <button class="small secondary" data-action="edit" data-i="${i}">Edit</button>
+            <button class="small danger" data-action="del" data-i="${i}">Löschen</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
 
-saveData();
-}
+      // Summen
+      const sums = artikel.reduce((acc, a) => {
+        acc.kauf += toNum(a.kaufpreis);
+        acc.verkauf += toNum(a.verkaufspreis);
+        acc.ebay += toNum(a.ebayGebuehren);
+        acc.versand += toNum(a.versandkosten);
+        acc.gewinn += (a.gewinn || 0);
+        return acc;
+      }, { kauf: 0, verkauf: 0, ebay: 0, versand: 0, gewinn: 0 });
 
-function addItem(){
-rows.push({item:"Neuer Artikel",buy:0,sell:0});
-render();
-}
+      document.getElementById("sumKauf").textContent = €(sums.kauf);
+      document.getElementById("sumVerkauf").textContent = €(sums.verkauf);
+      document.getElementById("sumEbay").textContent = €(sums.ebay);
+      document.getElementById("sumVersand").textContent = €(sums.versand);
+      document.getElementById("sumGewinn").textContent = €(sums.gewinn);
+    }
 
-function deleteItem(i){
-rows.splice(i,1);
-render();
-}
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (m) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+      }[m]));
+    }
 
-function updateItem(i,value){
-rows[i].item=value;
-render();
-}
+    // Aktionen
+    document.getElementById("saveBtn").addEventListener("click", () => {
+      const item = berechne(getForm());
 
-function updateBuy(i,value){
-rows[i].buy=parseFloat(value)||0;
-render();
-}
+      if (editIndex !== null) {
+        artikel[editIndex] = item;
+        editIndex = null;
+        document.getElementById("saveBtn").textContent = "Artikel hinzufügen";
+      } else {
+        artikel.push(item);
+      }
 
-function updateSell(i,value){
-rows[i].sell=parseFloat(value)||0;
-render();
-}
+      save();
+      render();
+      resetForm();
+    });
 
-function resetData(){
-if(confirm("Wirklich alles löschen?")){
-localStorage.removeItem(STORAGE_KEY);
-rows=[];
-render();
-}
-}
+    document.getElementById("resetBtn").addEventListener("click", resetForm);
 
-render();
+    document.getElementById("clearAllBtn").addEventListener("click", () => {
+      if (!confirm("Wirklich ALLES löschen?")) return;
+      artikel = [];
+      save();
+      render();
+      resetForm();
+    });
 
-</script>
+    document.getElementById("tbody").addEventListener("click", (e) => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      const i = Number(btn.dataset.i);
+      const action = btn.dataset.action;
 
+      if (action === "del") {
+        artikel.splice(i, 1);
+        save();
+        render();
+        resetForm();
+      }
+
+      if (action === "edit") {
+        editIndex = i;
+        setForm(artikel[i]);
+        document.getElementById("saveBtn").textContent = "Artikel speichern";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    });
+
+    document.getElementById("exportBtn").addEventListener("click", () => {
+      // CSV (;) für Deutschland
+      const header = [
+        "artikelnummer","datum","beschreibung","verkaufer","plattform","zahlungsart",
+        "kaufpreis","verkaufspreis","ebayGebuehren","versandkosten","gewinn"
+      ];
+
+      const rows = artikel.map(a => header.map(k => {
+        const v = (k === "gewinn") ? (a.gewinn ?? 0) : (a[k] ?? "");
+        // CSV-safe
+        const s = String(v).replaceAll('"','""');
+        return `"${s}"`;
+      }));
+
+      const csv = [header.join(";"), ...rows.map(r => r.join(";"))].join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "artikel_export.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
+
+    // Init
+    load();
+    render();
+
+    // Standard-Datum setzen, wenn leer
+    if (!document.getElementById("datum").value) {
+      const d = new Date();
+      const iso = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+      document.getElementById("datum").value = iso;
+    }
+  </script>
 </body>
 </html>
